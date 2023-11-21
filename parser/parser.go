@@ -21,10 +21,11 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-const (
-	AttributeName = "attribute"
+const ListId types.Identifier = "List"
 
-	ListId types.Identifier = "List"
+var (
+	errIndent  = errors.New("identation not consistent")
+	errUnended = errors.New("unended string")
 )
 
 type stack[T any] struct {
@@ -79,7 +80,7 @@ LineLoop:
 							listStack.pop()
 						}
 						if top < index {
-							err = errors.New("identation not consistent")
+							err = errIndent
 							break LineLoop
 						}
 						listStack.pop()
@@ -170,7 +171,7 @@ CharLoop:
 		}
 	}
 	if unended {
-		return nil, errors.New("unended string")
+		return nil, errUnended
 	}
 	return buildingWord, nil
 }
