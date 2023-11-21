@@ -21,7 +21,10 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-const ListId types.Identifier = "List"
+const (
+	BlocId types.Identifier = "bloc"
+	ListId types.Identifier = "list"
+)
 
 var (
 	errIndent  = errors.New("identation not consistent")
@@ -55,7 +58,7 @@ func Parse(str string) (*types.List, error) {
 	indentStack := newStack[int]()
 	indentStack.push(0)
 	listStack := newStack[*types.List]()
-	res := types.NewList(ListId)
+	res := types.NewList(BlocId)
 	listStack.push(res)
 	manageOpen(listStack)
 	var err error
