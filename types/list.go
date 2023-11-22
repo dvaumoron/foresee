@@ -125,36 +125,29 @@ func (l *List) Iter() Iterator {
 	return &listIterator{list: l}
 }
 
-func (l *List) WriteTo(w io.Writer) (int64, error) {
-	var n, n2 int64
-	var err error
+func (l *List) Render(w io.Writer) error {
 	for _, value := range l.inner {
-		n2, err = value.WriteTo(w)
-		n += n2
-		if err != nil {
-			break
+		if err := value.Render(w); err != nil {
+			return err
 		}
 	}
-	return n, err
+	return nil
 }
 
 func (l *List) Eval(env Environment) Object {
 	it := l.Iter()
 	defer it.Close()
-	elem0, ok := it.Next()
+
+	firstElem, ok := it.Next()
 	if !ok {
 		return None
 	}
-	value0 := elem0.Eval(env)
-	if appliable, ok := value0.(Appliable); ok {
-		return appliable.Apply(env, it)
+
+	appliable, ok := firstElem.Eval(env).(Appliable)
+	if !ok {
+		return None
 	}
-	l2 := &List{inner: make([]Object, 0, len(l.inner))}
-	l2.Add(value0)
-	for _, value := range l.inner[1:] {
-		l2.Add(value.Eval(env))
-	}
-	return l2
+	return appliable.Apply(env, it)
 }
 
 func NewList(objects ...Object) *List {

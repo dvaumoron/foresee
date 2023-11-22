@@ -16,12 +16,8 @@ package parser
 import (
 	"strconv"
 
+	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
-)
-
-const (
-	SetName     = ":="
-	UnquoteName = "unquote"
 )
 
 var (
@@ -46,20 +42,19 @@ func init() {
 func HandleClassicWord(word string, nodeList *types.List) {
 	if nativeRules(word, nodeList) {
 		args := types.NewList(types.String(word))
-		res := true
+		continueLoop := true
 		types.ForEach(CustomRules, func(object types.Object) bool {
 			rule, ok := object.(types.Appliable)
 			if ok {
 				// The Apply must return None if it fails.
 				node := rule.Apply(BuiltinsCopy, args)
-				_, res = node.(types.NoneType)
-				if !res {
+				if _, continueLoop = node.(types.NoneType); !continueLoop {
 					nodeList.Add(node)
 				}
 			}
-			return res
+			return continueLoop
 		})
-		if res {
+		if continueLoop {
 			nodeList.Add(types.Identifier(word))
 		}
 	}
@@ -68,8 +63,7 @@ func HandleClassicWord(word string, nodeList *types.List) {
 // a true is returned when no rule match
 func nativeRules(word string, nodeList *types.List) bool {
 	for _, parser := range wordParsers {
-		node, ok := parser(word)
-		if ok {
+		if node, ok := parser(word); ok {
 			nodeList.Add(node)
 			return false
 		}
@@ -136,7 +130,7 @@ func parseRune(word string) (types.Object, bool) {
 
 // manage melting with string literal
 func parseList(word string) (types.Object, bool) {
-	if word == SetName {
+	if word == names.Set {
 		return nil, false
 	}
 	chars := make(chan rune)
@@ -168,7 +162,7 @@ func parseList(word string) (types.Object, bool) {
 	if len(indexes) == 0 {
 		return nil, false
 	}
-	nodeList := types.NewList(ListId)
+	nodeList := types.NewList(names.ListId)
 	startIndex := 0
 	for _, splitIndex := range indexes {
 		handleSubWord(word[startIndex:splitIndex], nodeList)
@@ -200,7 +194,7 @@ func parseUnquote(word string) (types.Object, bool) {
 	if word[0] != ',' {
 		return nil, false
 	}
-	nodeList := types.NewList(types.Identifier(UnquoteName))
+	nodeList := types.NewList(types.Identifier(names.Unquote))
 	handleSubWord(word[1:], nodeList)
 	return nodeList, true
 }

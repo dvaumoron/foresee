@@ -38,8 +38,12 @@ type Environment interface {
 	CopyTo(Environment)
 }
 
+type Renderer interface {
+	Render(io.Writer) error
+}
+
 type Object interface {
-	io.WriterTo
+	Renderer
 	Eval(Environment) Object
 }
 

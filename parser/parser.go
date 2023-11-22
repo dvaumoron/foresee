@@ -18,12 +18,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
-)
-
-const (
-	BlocId types.Identifier = "bloc"
-	ListId types.Identifier = "list"
 )
 
 var (
@@ -58,7 +54,7 @@ func Parse(str string) (*types.List, error) {
 	indentStack := newStack[int]()
 	indentStack.push(0)
 	listStack := newStack[*types.List]()
-	res := types.NewList(BlocId)
+	res := types.NewList(names.FileId)
 	listStack.push(res)
 	manageOpen(listStack)
 	var err error

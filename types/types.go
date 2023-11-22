@@ -21,8 +21,8 @@ import (
 
 type NoneType struct{}
 
-func (n NoneType) WriteTo(w io.Writer) (int64, error) {
-	return 0, nil
+func (n NoneType) Render(w io.Writer) error {
+	return nil
 }
 
 func (n NoneType) Eval(env Environment) Object {
@@ -33,13 +33,13 @@ var None = NoneType{}
 
 type Boolean bool
 
-func (b Boolean) WriteTo(w io.Writer) (int64, error) {
+func (b Boolean) Render(w io.Writer) error {
 	str := "false"
 	if b {
 		str = "true"
 	}
-	n, err := io.WriteString(w, str)
-	return int64(n), err
+	_, err := io.WriteString(w, str)
+	return err
 }
 
 func (b Boolean) Eval(env Environment) Object {
@@ -48,9 +48,9 @@ func (b Boolean) Eval(env Environment) Object {
 
 type Integer int64
 
-func (i Integer) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, strconv.FormatInt(int64(i), 10))
-	return int64(n), err
+func (i Integer) Render(w io.Writer) error {
+	_, err := io.WriteString(w, strconv.FormatInt(int64(i), 10))
+	return err
 }
 
 func (i Integer) Eval(env Environment) Object {
@@ -59,9 +59,9 @@ func (i Integer) Eval(env Environment) Object {
 
 type Float float64
 
-func (f Float) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, fmt.Sprint(float64(f)))
-	return int64(n), err
+func (f Float) Render(w io.Writer) error {
+	_, err := io.WriteString(w, fmt.Sprint(float64(f)))
+	return err
 }
 
 func (f Float) Eval(env Environment) Object {
@@ -70,9 +70,9 @@ func (f Float) Eval(env Environment) Object {
 
 type Rune rune
 
-func (r Rune) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, string(r))
-	return int64(n), err
+func (r Rune) Render(w io.Writer) error {
+	_, err := io.WriteString(w, string(r))
+	return err
 }
 
 func (r Rune) Eval(env Environment) Object {
@@ -81,9 +81,9 @@ func (r Rune) Eval(env Environment) Object {
 
 type String string
 
-func (s String) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, string(s))
-	return int64(n), err
+func (s String) Render(w io.Writer) error {
+	_, err := io.WriteString(w, string(s))
+	return err
 }
 
 func (s String) Eval(env Environment) Object {
@@ -119,8 +119,8 @@ func (s String) Size() int {
 
 type Identifier string
 
-func (i Identifier) WriteTo(w io.Writer) (int64, error) {
-	return 0, nil
+func (i Identifier) Render(w io.Writer) error {
+	return nil
 }
 
 func (i Identifier) Eval(env Environment) Object {
