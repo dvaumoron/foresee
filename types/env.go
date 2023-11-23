@@ -13,7 +13,9 @@
 
 package types
 
-import "time"
+import (
+	"time"
+)
 
 type BaseEnvironment struct {
 	NoneType
@@ -80,10 +82,17 @@ func (b BaseEnvironment) Size() int {
 	return len(b.objects)
 }
 
+func (b BaseEnvironment) Iter() Iterator {
+	objectChannel := make(chan Object)
+	it := &chanIterator{channel: objectChannel}
+	go it.sendMapValue(b.objects)
+	return it
+}
+
 type chanIterator struct {
 	NoneType
-	receiver    <-chan Object
-	closeSender chan<- NoneType
+	channel   chan Object
+	cancelled bool
 }
 
 func (it *chanIterator) Iter() Iterator {
@@ -91,7 +100,7 @@ func (it *chanIterator) Iter() Iterator {
 }
 
 func (it *chanIterator) Next() (Object, bool) {
-	value, ok := <-it.receiver
+	value, ok := <-it.channel
 	if !ok {
 		return None, false
 	}
@@ -99,41 +108,24 @@ func (it *chanIterator) Next() (Object, bool) {
 }
 
 func (it *chanIterator) Close() {
-	if it.closeSender != nil {
-		ticker := time.NewTicker(time.Microsecond)
-		defer ticker.Stop()
-		for {
-			select {
-			case it.closeSender <- None:
-				close(it.closeSender)
-				it.closeSender = nil
-				return
-			case <-ticker.C:
-				if it.closeSender == nil {
-					return
-				}
-			}
-		}
-	}
+	it.cancelled = true
 }
 
-func (b BaseEnvironment) Iter() Iterator {
-	objectChannel := make(chan Object)
-	closeChannel := make(chan NoneType)
-	go sendMapValue(b.objects, objectChannel, closeChannel)
-	return &chanIterator{receiver: objectChannel, closeSender: closeChannel}
-}
+func (it *chanIterator) sendMapValue(objects map[string]Object) {
+	ticker := time.NewTicker(time.Millisecond)
+	defer ticker.Stop()
 
-func sendMapValue(objects map[string]Object, transmitter chan<- Object, shouldClose <-chan NoneType) {
 ForLoop:
 	for key, value := range objects {
 		select {
-		case transmitter <- NewList(String(key), value):
-		case <-shouldClose:
-			break ForLoop
+		case it.channel <- NewList(String(key), value):
+		case <-ticker.C:
+			if it.cancelled {
+				break ForLoop
+			}
 		}
 	}
-	close(transmitter)
+	close(it.channel)
 }
 
 func MakeBaseEnvironment() BaseEnvironment {
