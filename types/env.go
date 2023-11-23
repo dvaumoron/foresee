@@ -13,6 +13,8 @@
 
 package types
 
+import "sync"
+
 type BaseEnvironment struct {
 	NoneType
 	objects map[string]Object
@@ -88,6 +90,7 @@ type chanIterator struct {
 	NoneType
 	channel chan Object
 	done    chan NoneType
+	once    sync.Once
 }
 
 func (it *chanIterator) Iter() Iterator {
@@ -103,8 +106,9 @@ func (it *chanIterator) Next() (Object, bool) {
 }
 
 func (it *chanIterator) Close() {
-	defer recover() // erase close panic on multiple call
-	close(it.done)
+	it.once.Do(func() {
+		close(it.done)
+	})
 }
 
 func (it *chanIterator) sendMapValue(objects map[string]Object) {
