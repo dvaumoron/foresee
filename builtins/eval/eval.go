@@ -25,7 +25,6 @@ func initBuitins() types.BaseEnvironment {
 	noOpAppliable := types.MakeNativeAppliable(noOp)
 
 	base := types.MakeBaseEnvironment()
-	// TODO change to manage inference ?
 	base.StoreStr(names.Package, noOpAppliable)
 
 	// TODO

@@ -1,0 +1,39 @@
+package goal
+
+import "fmt"
+
+type adder struct
+    # the ? indicate to use generic (should detect linked field type) 
+    # and distinguish from a type embedding
+	value ?
+
+func NewAdder(a) ? # the ? indicate there is a return
+	return (&adder value:a) # equivalent to (& (adder value:a))
+
+func (a *adder) Add(b) ? # *adder is equivalent to (* adder)
+	return (+ (. a value) b) # use of + allows to guess it's a base.Addable
+
+type adderInt struct
+    value int
+
+func MakeAdderInt(a) ?
+	return (adderInt value:a)
+
+func (a adderInt) Add(b) ?
+    return (+ (. a value) b) # different here because value is an int
+
+func Addition(a b) ?
+	return (. a Add b)
+
+func UseAdder() # no ? (there is no return)
+	:= a:float64 # no value to use go default
+	= a 1 # use = for simple assignation (does not allow type annotation)
+    := b:float64 2
+
+	. fmt Println "Result 1 is" (Addition (NewAdder a) b)
+
+    # can rely on go inference
+	:= (c d:int) 1 2
+
+	. fmt Println "Result 2 is" (Addition (MakeAdderInt c) d)
+

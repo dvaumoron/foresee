@@ -102,6 +102,7 @@ func processFile(filePath string) {
 		return
 	}
 
+	// TODO manage inference across multiple file
 	infered, err := infer.InferTypes(expanded)
 	if err != nil {
 		fmt.Printf("Error while infering %s : %s", filePath, err)
@@ -110,8 +111,8 @@ func processFile(filePath string) {
 
 	var outputdata bytes.Buffer
 	outputPath := computeOutputPath(filePath)
-	if err = infered.Eval(types.MakeLocalEnvironment(compile.Builtins)).Render(&outputdata); err != nil {
-		fmt.Printf("Error while generating %s : %s", outputPath, err)
+	if err = compile.Compile(infered).Render(&outputdata); err != nil {
+		fmt.Printf("Error while rendering %s : %s", outputPath, err)
 		return
 	}
 

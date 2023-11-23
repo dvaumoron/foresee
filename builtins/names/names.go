@@ -18,13 +18,18 @@ import "github.com/dvaumoron/foresee/types"
 const (
 	HiddenModule = "#module"
 
+	Assign  = "="
 	Block   = "block"
 	Func    = "func"
 	Import  = "import"
 	Package = "package"
-	Set     = ":="
-	Unquote = "unquote"
+	Var     = ":="
 
-	FileId types.Identifier = "file"
-	ListId types.Identifier = "list"
+	AmpersandId types.Identifier = "&"
+	FileId      types.Identifier = "file"
+	ListId      types.Identifier = "list"
+	LoadId      types.Identifier = "[]"
+	StarId      types.Identifier = "*"
+	StoreId     types.Identifier = "[]="
+	UnquoteId   types.Identifier = "unquote"
 )

@@ -15,6 +15,7 @@ package parser
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
@@ -35,6 +36,7 @@ type ConvertString func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseUnquote, parseList,
+		parseAddressing, parseDereference, parseSliceType,
 		parseString, parseRune, parseInt, parseFloat,
 	}
 }
@@ -130,7 +132,7 @@ func parseRune(word string) (types.Object, bool) {
 
 // manage melting with string literal
 func parseList(word string) (types.Object, bool) {
-	if word == names.Set {
+	if word == names.Var {
 		return nil, false
 	}
 	chars := make(chan rune)
@@ -194,7 +196,37 @@ func parseUnquote(word string) (types.Object, bool) {
 	if word[0] != ',' {
 		return nil, false
 	}
-	nodeList := types.NewList(types.Identifier(names.Unquote))
+	nodeList := types.NewList(types.Identifier(names.UnquoteId))
+	handleSubWord(word[1:], nodeList)
+	return nodeList, true
+}
+
+func parseAddressing(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if word[0] != '&' || len(word) == 1 || word == "&=" || word == "&^=" {
+		return nil, false
+	}
+	nodeList := types.NewList(names.AmpersandId)
+	handleSubWord(word[1:], nodeList)
+	return nodeList, true
+}
+
+func parseDereference(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if word[0] != '*' || len(word) == 1 || word == "*=" {
+		return nil, false
+	}
+	nodeList := types.NewList(names.StarId)
+	handleSubWord(word[1:], nodeList)
+	return nodeList, true
+}
+
+func parseSliceType(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if !strings.HasPrefix(word, string(names.LoadId)) || len(word) == 2 || word == string(names.StoreId) {
+		return nil, false
+	}
+	nodeList := types.NewList(names.LoadId)
 	handleSubWord(word[1:], nodeList)
 	return nodeList, true
 }
