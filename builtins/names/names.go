@@ -18,12 +18,13 @@ import "github.com/dvaumoron/foresee/types"
 const (
 	HiddenModule = "#module"
 
-	Assign  = "="
-	Block   = "block"
-	Func    = "func"
-	Import  = "import"
-	Package = "package"
-	Var     = ":="
+	Assign      = "="
+	Block       = "block"
+	Func        = "func"
+	GuessMarker = "?"
+	Import      = "import"
+	Package     = "package"
+	Var         = ":="
 
 	AmpersandId types.Identifier = "&"
 	FileId      types.Identifier = "file"
@@ -33,3 +34,15 @@ const (
 	StoreId     types.Identifier = "[]="
 	UnquoteId   types.Identifier = "unquote"
 )
+
+/*
+TODO:
+
+for if else break continue select switch case type struct chan const map default fallthrough range go defer return goto
+
++ - * / % | ^ << >> &^ && || <- == != < > ! <= >= += -= *= /= %= &= &^= ++ --
+
+Go keywords excluded:
+
+interface var
+*/

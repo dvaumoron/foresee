@@ -41,7 +41,7 @@ func Addition[T0 any, T1 any](a guessed0[T0, T1], b T0) T1 {
 func UseAdder() {
 	var a float64
 	a = 1
-	b := float64(2)
+	var b float64 = 2
 
 	fmt.Println("Result 1 is", Addition(NewAdder(a), b))
 

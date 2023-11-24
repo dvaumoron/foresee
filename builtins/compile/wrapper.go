@@ -18,18 +18,20 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-type wrapper struct {
+var _ types.Appliable = appliableWrapper{}
+
+type appliableWrapper struct {
 	types.Renderer
 }
 
-func (w wrapper) Eval(types.Environment) types.Object {
+func (w appliableWrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
-func (w wrapper) Apply(env types.Environment, itArgs types.Iterable) types.Object {
+func (w appliableWrapper) Apply(env types.Environment, itArgs types.Iterable) types.Object {
 	if casted, ok := w.Renderer.(*jen.Statement); ok {
 		argsCode := compileToCodeSlice(env, itArgs)
-		return wrapper{Renderer: casted.Clone().Call(argsCode...)}
+		return appliableWrapper{Renderer: casted.Clone().Call(argsCode...)}
 	}
 	return w
 }
@@ -43,7 +45,7 @@ type compileEnvironment struct {
 func (c compileEnvironment) LoadStr(key string) (types.Object, bool) {
 	res, ok := c.Environment.LoadStr(key)
 	if !ok {
-		res = wrapper{Renderer: jen.Id(key)}
+		res = appliableWrapper{Renderer: jen.Id(key)}
 	}
 	return res, true
 }

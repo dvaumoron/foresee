@@ -21,8 +21,8 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-// user can not directly use this kind of id (# start a comment)
 const (
+	// user can not directly use this kind of id (# start a comment)
 	hiddenImportsName = "#imports"
 	hiddenPackageName = "#package"
 
@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	wrappedErrorComment = wrapper{Renderer: jen.Comment("line with error, can't generate correct go code")}
+	wrappedErrorComment = appliableWrapper{Renderer: jen.Comment("line with error, can't generate correct go code")}
 
 	Builtins = initBuitins()
 )
@@ -56,23 +56,25 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	values := compileToCodeSlice(env, itArgs)
 	switch casted := arg0.(type) {
 	case types.Identifier:
-		return wrapper{Renderer: jen.Id(string(casted)).Op(names.Assign).List(values...)}
+		return appliableWrapper{Renderer: jen.Id(string(casted)).Op(names.Assign).List(values...)}
 	case *types.List:
+		if id := extractAssignTargetFromList(env, casted); id != nil {
+			return appliableWrapper{Renderer: id.Op(names.Assign).List(values...)}
+		}
+
 		var ids []jen.Code
 		types.ForEach(casted, func(elem types.Object) bool {
-			if id, ok := elem.(types.Identifier); ok {
-				ids = append(ids, jen.Id(string(id)))
-			}
+			ids = append(ids, extractAssignTarget(env, elem))
 			return true
 		})
-		return wrapper{Renderer: jen.List(ids...).Op(names.Assign).List(values...)}
+		return appliableWrapper{Renderer: jen.List(ids...).Op(names.Assign).List(values...)}
 	}
 	return wrappedErrorComment
 }
 
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	codes := compileToCodeSlice(env, itArgs)
-	return wrapper{Renderer: jen.Block(codes...)}
+	return appliableWrapper{Renderer: jen.Block(codes...)}
 }
 
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -105,7 +107,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	})
 
 	jenFile.Add(codes...)
-	return wrapper{Renderer: jenFile}
+	return appliableWrapper{Renderer: jenFile}
 }
 
 func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -125,15 +127,15 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if len(values) == 0 {
 		if list, ok := arg0.(*types.List); ok && list.Size() > 2 {
 			varId, _ := list.LoadInt(1).(types.Identifier)
-			typeStmt := extractComplexId(list.LoadInt(2))
-			return wrapper{Renderer: jen.Var().Id(string(varId)).Add(typeStmt)}
+			typeStmt := extractTypeId(list.LoadInt(2))
+			return appliableWrapper{Renderer: jen.Var().Id(string(varId)).Add(typeStmt)}
 		}
 		return wrappedErrorComment
 	}
 
 	switch casted := arg0.(type) {
 	case types.Identifier:
-		return wrapper{Renderer: jen.Id(string(casted)).Op(names.Var).List(values...)}
+		return appliableWrapper{Renderer: jen.Var().Id(string(casted)).Op(names.Assign).List(values...)}
 	case *types.List:
 		// test if it's a:b instead of (a:b c:d)
 		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId == names.ListId {
@@ -142,13 +144,11 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 			}
 
 			varId, _ := casted.LoadInt(1).(types.Identifier)
-			varCode := jen.Id(string(varId)).Op(names.Var)
-			if typeStmt := extractComplexId(casted.LoadInt(2)); typeStmt == nil {
-				varCode.List(values...)
-			} else {
-				varCode.Add(typeStmt).Call(values...)
+			varCode := jen.Var().Id(string(varId))
+			if typeStmt := extractTypeId(casted.LoadInt(2)); typeStmt != nil {
+				varCode.Add(typeStmt)
 			}
-			return wrapper{Renderer: varCode}
+			return appliableWrapper{Renderer: varCode.Op(names.Assign).List(values...)}
 		}
 
 		var varIds []jen.Code
@@ -162,7 +162,7 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 				// assume it's in a:b format
 				varId, _ := casted2.LoadInt(1).(types.Identifier)
 				varIds = append(varIds, jen.Id(string(varId)))
-				typeIds = append(typeIds, extractComplexId(casted2.LoadInt(2)))
+				typeIds = append(typeIds, extractTypeId(casted2.LoadInt(2)))
 			}
 			return true
 		})
@@ -173,7 +173,7 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 				values[index] = typeId.Call(values[index])
 			}
 		}
-		return wrapper{Renderer: jen.List(varIds...).Op(names.Var).List(values...)}
+		return appliableWrapper{Renderer: jen.List(varIds...).Op(names.Var).List(values...)}
 	}
 	return wrappedErrorComment
 }
@@ -190,7 +190,7 @@ func compileToCodeSlice(env types.Environment, instructions types.Iterable) []je
 // manage wrapper and literals
 func extractCode(object types.Object) jen.Code {
 	switch casted := object.(type) {
-	case wrapper:
+	case appliableWrapper:
 		if code, ok := casted.Renderer.(jen.Code); ok {
 			return code
 		}
@@ -211,15 +211,46 @@ func extractCode(object types.Object) jen.Code {
 	return jen.Empty()
 }
 
-// handle *a, []a and &a format
-func extractComplexId(object types.Object) *jen.Statement {
+// handle *type and []type format (and their combinations like [][]*type)
+func extractTypeId(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
 		if casted.Size() > 1 {
 			op, _ := casted.LoadInt(0).(types.Identifier)
-			return jen.Op(string(op)).Add(extractComplexId(casted.LoadInt(1)))
+			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
+		}
+	}
+	return nil
+}
+
+// handle (* a) as *a and ([] a b c) as a[b][c]
+func extractAssignTarget(env types.Environment, object types.Object) *jen.Statement {
+	switch casted := object.(type) {
+	case types.Identifier:
+		return jen.Id(string(casted))
+	case *types.List:
+		return extractAssignTargetFromList(env, casted)
+	}
+	return nil
+}
+
+func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.Statement {
+	if list.Size() > 1 {
+		switch op, _ := list.LoadInt(0).(types.Identifier); op {
+		case names.LoadId:
+			it := list.Iter()
+			id, _ := it.Next()
+			castedId, _ := id.(types.Identifier)
+			code := jen.Id(string(castedId))
+			types.ForEach(it, func(elem types.Object) bool {
+				code.Index(extractCode(elem.Eval(env)))
+				return true
+			})
+			return code
+		case names.StarId:
+			return jen.Op(string(op)).Add(extractAssignTarget(env, list.LoadInt(1)))
 		}
 	}
 	return nil
