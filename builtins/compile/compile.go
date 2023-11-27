@@ -43,7 +43,9 @@ func initBuitins() types.BaseEnvironment {
 	base := types.MakeBaseEnvironment()
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
+	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
+	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))
 	base.StoreStr(names.Package, types.MakeNativeAppliable(packageForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 
@@ -77,6 +79,35 @@ func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return appliableWrapper{Renderer: jen.Block(codes...)}
 }
 
+func constForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	value, ok := compileToCode(env, itArgs)
+	switch casted := arg0.(type) {
+	case types.Identifier:
+		if !ok {
+			// no declared type and no value
+			return wrappedErrorComment
+		}
+		return appliableWrapper{Renderer: jen.Const().Id(string(casted)).Op(names.Assign).Add(value)}
+	case *types.List:
+		// expect a:b
+		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId != names.ListId {
+			return wrappedErrorComment
+		}
+
+		constId, _ := casted.LoadInt(1).(types.Identifier)
+		constCode := jen.Const().Id(string(constId))
+		if typeId := extractTypeId(casted.LoadInt(2)); typeId != nil {
+			constCode.Add(typeId)
+		}
+		if ok {
+			constCode.Op(names.Assign).Add(value)
+		}
+		return appliableWrapper{Renderer: constCode}
+	}
+	return wrappedErrorComment
+}
+
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// init default value
 	env.StoreStr(hiddenPackageName, mainId)
@@ -93,7 +124,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	importList, _ := imports.(*types.List)
 	types.ForEach(importList, func(importDesc types.Object) bool {
 		casted, _ := importDesc.(*types.List)
-		name, _ := casted.LoadInt(0).(types.String)
+		name, _ := casted.LoadInt(0).(types.Identifier)
 		path, _ := casted.LoadInt(1).(types.String)
 		switch name {
 		case "_":
@@ -108,6 +139,29 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	jenFile.Add(codes...)
 	return appliableWrapper{Renderer: jenFile}
+}
+
+func importForm(env types.Environment, itArgs types.Iterator) types.Object {
+	imports, _ := env.LoadStr(hiddenImportsName)
+	importList, _ := imports.(*types.List)
+	types.ForEach(itArgs, func(importDesc types.Object) bool {
+		switch casted := importDesc.(type) {
+		case *types.List:
+			if casted.Size() > 1 {
+				importList.Add(casted)
+			} else {
+				importList.Add(types.NewList(types.Identifier(""), casted.LoadInt(0)))
+			}
+			return true
+		case types.Identifier:
+			path, _ := itArgs.Next()
+			importList.Add(types.NewList(casted, path))
+		case types.String:
+			importList.Add(types.NewList(types.Identifier(""), casted))
+		}
+		return false // onliner cases so break
+	})
+	return types.None
 }
 
 func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -187,6 +241,11 @@ func compileToCodeSlice(env types.Environment, instructions types.Iterable) []je
 	return codes
 }
 
+func compileToCode(env types.Environment, instructions types.Iterator) (jen.Code, bool) {
+	instruction, ok := instructions.Next()
+	return extractCode(instruction.Eval(env)), ok
+}
+
 // manage wrapper and literals
 func extractCode(object types.Object) jen.Code {
 	switch casted := object.(type) {
@@ -217,6 +276,7 @@ func extractTypeId(object types.Object) *jen.Statement {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
+		// TODO manage map[t1]t2 and chan type
 		if casted.Size() > 1 {
 			op, _ := casted.LoadInt(0).(types.Identifier)
 			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))

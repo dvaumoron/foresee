@@ -20,6 +20,7 @@ const (
 
 	Assign      = "="
 	Block       = "block"
+	Const       = "const"
 	Func        = "func"
 	GuessMarker = "?"
 	Import      = "import"
@@ -38,7 +39,7 @@ const (
 /*
 TODO:
 
-for if else break continue select switch case type struct chan const map default fallthrough range go defer return goto
+for if else break continue select switch case type struct chan map default fallthrough range go defer return goto
 
 + - * / % | ^ << >> &^ && || <- == != < > ! <= >= += -= *= /= %= &= &^= ++ --
 
