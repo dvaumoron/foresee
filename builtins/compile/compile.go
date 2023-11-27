@@ -94,6 +94,8 @@ func extractCode(object types.Object) jen.Code {
 }
 
 // handle *type, []type, map[t1]t2 and chan types format (and their combinations like [][]*type)
+// TODO manage function type
+// TODO manage anonymous struct ?
 func extractTypeId(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
