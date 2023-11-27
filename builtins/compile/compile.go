@@ -87,6 +87,8 @@ func extractCode(object types.Object) jen.Code {
 		return jen.LitRune(rune(casted))
 	case types.String:
 		return jen.Lit(string(casted))
+	case types.Identifier:
+		return jen.Id(string(casted))
 	}
 	return jen.Empty()
 }
@@ -99,12 +101,34 @@ func extractTypeId(object types.Object) *jen.Statement {
 	case *types.List:
 		switch casted.Size() {
 		case 1:
-			op, _ := casted.LoadInt(0).(types.Identifier)
-			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
+			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+			case names.ArrowChanId:
+				return jen.Op(names.Arrow).Chan().Add(extractTypeId(casted.LoadInt(1)))
+			case names.ChanArrowId:
+				return jen.Chan().Op(names.Arrow).Add(extractTypeId(casted.LoadInt(1)))
+			case names.ChanId:
+				return jen.Chan().Add(extractTypeId(casted.LoadInt(1)))
+			case names.LoadId:
+				return jen.Index().Add(extractTypeId(casted.LoadInt(1)))
+			default:
+				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
+			}
 		case 2:
-			// manage map[t1]t2
-			op, _ := casted.LoadInt(0).(types.Identifier)
-			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
+			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+			case names.LoadId:
+				// manage [size]type
+				switch castedSize := casted.LoadInt(1).(type) {
+				case types.Integer:
+					return jen.Index(jen.Lit(int(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
+				case types.Identifier:
+					// size is ...
+					return jen.Index(jen.Op(string(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
+				}
+			case names.MapId:
+				// manage map[t1]t2
+				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
+
+			}
 		}
 	}
 	return nil

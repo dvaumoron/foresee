@@ -19,6 +19,7 @@ const (
 	HiddenModule = "#module"
 
 	AndEqual    = "&="
+	Arrow       = "<-"
 	Assign      = "="
 	Block       = "block"
 	Const       = "const"

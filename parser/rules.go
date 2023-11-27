@@ -36,7 +36,7 @@ type ConvertString func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseUnquote, parseList,
-		parseAddressing, parseDereference, parseSliceType, parseMapType,
+		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType,
 		// handle "<-chan[type]", "chan<-[type]", "chan[type]" as (<-chan type), (chan<- type), (chan type)
 		parseArrowChanType, parseChanArrowType, parseChanType,
 		parseString, parseRune, parseInt, parseFloat,
@@ -219,13 +219,18 @@ func parseDereference(word string) (types.Object, bool) {
 	return nodeList, true
 }
 
-func parseSliceType(word string) (types.Object, bool) {
+func parseArrayOrSliceType(word string) (types.Object, bool) {
+	index := strings.IndexByte(word, ']')
 	// test len to keep the basic identifier case
-	if !strings.HasPrefix(word, string(names.LoadId)) || len(word) == 2 || word == string(names.StoreId) {
+	if word[0] != '[' || index == -1 || len(word) == 2 || word == string(names.StoreId) {
 		return nil, false
 	}
 	nodeList := types.NewList(names.LoadId)
-	nodeList.Add(handleSubWord(word[2:]))
+	sizeNode := handleSubWord(word[1:index])
+	if _, ok := sizeNode.(types.NoneType); !ok {
+		nodeList.Add(sizeNode)
+	}
+	nodeList.Add(handleSubWord(word[index+1:]))
 	return nodeList, true
 }
 
