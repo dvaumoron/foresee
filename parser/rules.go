@@ -36,41 +36,40 @@ type ConvertString func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseUnquote, parseList,
-		parseAddressing, parseDereference, parseSliceType,
+		parseAddressing, parseDereference, parseSliceType, parseMapType,
+		// handle "<-chan[type]", "chan<-[type]", "chan[type]" as (<-chan type), (chan<- type), (chan type)
+		parseArrowChanType, parseChanArrowType, parseChanType,
 		parseString, parseRune, parseInt, parseFloat,
 	}
 }
 
-func HandleClassicWord(word string, nodeList *types.List) {
-	if nativeRules(word, nodeList) {
+func HandleClassicWord(word string) types.Object {
+	var res types.Object
+	continueLoop := true
+	if res, continueLoop = nativeRules(word); continueLoop {
 		args := types.NewList(types.String(word))
-		continueLoop := true
 		types.ForEach(CustomRules, func(object types.Object) bool {
-			rule, ok := object.(types.Appliable)
-			if ok {
+			if rule, ok := object.(types.Appliable); ok {
 				// The Apply must return None if it fails.
 				node := rule.Apply(BuiltinsCopy, args)
 				if _, continueLoop = node.(types.NoneType); !continueLoop {
-					nodeList.Add(node)
+					res = node
 				}
 			}
 			return continueLoop
 		})
-		if continueLoop {
-			nodeList.Add(types.Identifier(word))
-		}
 	}
+	return res
 }
 
-// a true is returned when no rule match
-func nativeRules(word string, nodeList *types.List) bool {
+// An identifier and true is returned when no rule match
+func nativeRules(word string) (types.Object, bool) {
 	for _, parser := range wordParsers {
 		if node, ok := parser(word); ok {
-			nodeList.Add(node)
-			return false
+			return node, false
 		}
 	}
-	return true
+	return types.Identifier(word), true
 }
 
 func parseTrue(word string) (types.Object, bool) {
@@ -167,19 +166,18 @@ func parseList(word string) (types.Object, bool) {
 	nodeList := types.NewList(names.ListId)
 	startIndex := 0
 	for _, splitIndex := range indexes {
-		handleSubWord(word[startIndex:splitIndex], nodeList)
+		nodeList.Add(handleSubWord(word[startIndex:splitIndex]))
 		startIndex = splitIndex + 1
 	}
-	handleSubWord(word[startIndex:], nodeList)
+	nodeList.Add(handleSubWord(word[startIndex:]))
 	return nodeList, true
 }
 
-func handleSubWord(word string, nodeList *types.List) {
+func handleSubWord(word string) types.Object {
 	if word == "" {
-		nodeList.Add(types.None)
-	} else {
-		HandleClassicWord(word, nodeList)
+		return types.None
 	}
+	return HandleClassicWord(word)
 }
 
 func parseInt(word string) (types.Object, bool) {
@@ -197,17 +195,17 @@ func parseUnquote(word string) (types.Object, bool) {
 		return nil, false
 	}
 	nodeList := types.NewList(types.Identifier(names.UnquoteId))
-	handleSubWord(word[1:], nodeList)
+	nodeList.Add(handleSubWord(word[1:]))
 	return nodeList, true
 }
 
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
-	if word[0] != '&' || len(word) == 1 || word == "&=" || word == "&^=" {
+	if word[0] != '&' || len(word) == 1 || word == names.AndEqual || word == names.NotAndEqual {
 		return nil, false
 	}
 	nodeList := types.NewList(names.AmpersandId)
-	handleSubWord(word[1:], nodeList)
+	nodeList.Add(handleSubWord(word[1:]))
 	return nodeList, true
 }
 
@@ -217,7 +215,7 @@ func parseDereference(word string) (types.Object, bool) {
 		return nil, false
 	}
 	nodeList := types.NewList(names.StarId)
-	handleSubWord(word[1:], nodeList)
+	nodeList.Add(handleSubWord(word[1:]))
 	return nodeList, true
 }
 
@@ -227,6 +225,47 @@ func parseSliceType(word string) (types.Object, bool) {
 		return nil, false
 	}
 	nodeList := types.NewList(names.LoadId)
-	handleSubWord(word[1:], nodeList)
+	nodeList.Add(handleSubWord(word[2:]))
+	return nodeList, true
+}
+
+func parseMapType(word string) (types.Object, bool) {
+	index := strings.IndexByte(word, ']')
+	if !strings.HasPrefix(word, "map[") || index == -1 {
+		return nil, false
+	}
+	nodeList := types.NewList(names.MapId)
+	nodeList.Add(handleSubWord(word[4:index])) // can be *type
+	nodeList.Add(handleSubWord(word[index+1:]))
+	return nodeList, true
+}
+
+func parseArrowChanType(word string) (types.Object, bool) {
+	lastIndex := len(word) - 1
+	if !strings.HasPrefix(word, string("<-chan[")) || word[lastIndex] != ']' {
+		return nil, false
+	}
+	nodeList := types.NewList(names.ArrowChanId)
+	nodeList.Add(handleSubWord(word[7:lastIndex]))
+	return nodeList, true
+}
+
+func parseChanArrowType(word string) (types.Object, bool) {
+	lastIndex := len(word) - 1
+	if !strings.HasPrefix(word, string("chan<-[")) || word[lastIndex] != ']' {
+		return nil, false
+	}
+	nodeList := types.NewList(names.ChanArrowId)
+	nodeList.Add(handleSubWord(word[7:lastIndex]))
+	return nodeList, true
+}
+
+func parseChanType(word string) (types.Object, bool) {
+	lastIndex := len(word) - 1
+	if !strings.HasPrefix(word, string("chan[")) || word[lastIndex] != ']' {
+		return nil, false
+	}
+	nodeList := types.NewList(names.ChanId)
+	nodeList.Add(handleSubWord(word[5:lastIndex]))
 	return nodeList, true
 }

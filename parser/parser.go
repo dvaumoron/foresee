@@ -133,7 +133,7 @@ func handleWord(words <-chan string, listStack *stack[*types.List], done chan<- 
 		case ")":
 			listStack.pop()
 		default:
-			HandleClassicWord(word, listStack.peek())
+			listStack.peek().Add(HandleClassicWord(word))
 		}
 	}
 	done <- types.None

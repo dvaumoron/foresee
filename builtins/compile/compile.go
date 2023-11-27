@@ -53,185 +53,6 @@ func initBuitins() types.BaseEnvironment {
 	return base
 }
 
-func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
-	arg0, _ := itArgs.Next()
-	values := compileToCodeSlice(env, itArgs)
-	switch casted := arg0.(type) {
-	case types.Identifier:
-		return appliableWrapper{Renderer: jen.Id(string(casted)).Op(names.Assign).List(values...)}
-	case *types.List:
-		if id := extractAssignTargetFromList(env, casted); id != nil {
-			return appliableWrapper{Renderer: id.Op(names.Assign).List(values...)}
-		}
-
-		var ids []jen.Code
-		types.ForEach(casted, func(elem types.Object) bool {
-			ids = append(ids, extractAssignTarget(env, elem))
-			return true
-		})
-		return appliableWrapper{Renderer: jen.List(ids...).Op(names.Assign).List(values...)}
-	}
-	return wrappedErrorComment
-}
-
-func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
-	codes := compileToCodeSlice(env, itArgs)
-	return appliableWrapper{Renderer: jen.Block(codes...)}
-}
-
-func constForm(env types.Environment, itArgs types.Iterator) types.Object {
-	arg0, _ := itArgs.Next()
-	value, ok := compileToCode(env, itArgs)
-	switch casted := arg0.(type) {
-	case types.Identifier:
-		if !ok {
-			// no declared type and no value
-			return wrappedErrorComment
-		}
-		return appliableWrapper{Renderer: jen.Const().Id(string(casted)).Op(names.Assign).Add(value)}
-	case *types.List:
-		// expect a:b
-		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId != names.ListId {
-			return wrappedErrorComment
-		}
-
-		constId, _ := casted.LoadInt(1).(types.Identifier)
-		constCode := jen.Const().Id(string(constId))
-		if typeId := extractTypeId(casted.LoadInt(2)); typeId != nil {
-			constCode.Add(typeId)
-		}
-		if ok {
-			constCode.Op(names.Assign).Add(value)
-		}
-		return appliableWrapper{Renderer: constCode}
-	}
-	return wrappedErrorComment
-}
-
-func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// init default value
-	env.StoreStr(hiddenPackageName, mainId)
-	env.StoreStr(hiddenImportsName, types.NewList())
-
-	codes := compileToCodeSlice(env, itArgs)
-
-	packageName, _ := env.LoadStr(hiddenPackageName)
-	packageNameId, _ := packageName.(types.Identifier)
-
-	jenFile := jen.NewFile(string(packageNameId))
-
-	imports, _ := env.LoadStr(hiddenImportsName)
-	importList, _ := imports.(*types.List)
-	types.ForEach(importList, func(importDesc types.Object) bool {
-		casted, _ := importDesc.(*types.List)
-		name, _ := casted.LoadInt(0).(types.Identifier)
-		path, _ := casted.LoadInt(1).(types.String)
-		switch name {
-		case "_":
-			jenFile.Anon(string(path))
-		case "":
-			jenFile.ImportName(string(path), string(name))
-		default:
-			jenFile.ImportAlias(string(path), string(name))
-		}
-		return true
-	})
-
-	jenFile.Add(codes...)
-	return appliableWrapper{Renderer: jenFile}
-}
-
-func importForm(env types.Environment, itArgs types.Iterator) types.Object {
-	imports, _ := env.LoadStr(hiddenImportsName)
-	importList, _ := imports.(*types.List)
-	types.ForEach(itArgs, func(importDesc types.Object) bool {
-		switch casted := importDesc.(type) {
-		case *types.List:
-			if casted.Size() > 1 {
-				importList.Add(casted)
-			} else {
-				importList.Add(types.NewList(types.Identifier(""), casted.LoadInt(0)))
-			}
-			return true
-		case types.Identifier:
-			path, _ := itArgs.Next()
-			importList.Add(types.NewList(casted, path))
-		case types.String:
-			importList.Add(types.NewList(types.Identifier(""), casted))
-		}
-		return false // onliner cases so break
-	})
-	return types.None
-}
-
-func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
-	packageName, _ := itArgs.Next()
-	switch casted := packageName.(type) {
-	case types.Identifier:
-		env.StoreStr(hiddenPackageName, casted)
-	case types.String:
-		env.StoreStr(hiddenPackageName, types.Identifier(casted))
-	}
-	return types.None
-}
-
-func varForm(env types.Environment, itArgs types.Iterator) types.Object {
-	arg0, _ := itArgs.Next()
-	values := compileToCodeSlice(env, itArgs)
-	if len(values) == 0 {
-		if list, ok := arg0.(*types.List); ok && list.Size() > 2 {
-			varId, _ := list.LoadInt(1).(types.Identifier)
-			typeStmt := extractTypeId(list.LoadInt(2))
-			return appliableWrapper{Renderer: jen.Var().Id(string(varId)).Add(typeStmt)}
-		}
-		return wrappedErrorComment
-	}
-
-	switch casted := arg0.(type) {
-	case types.Identifier:
-		return appliableWrapper{Renderer: jen.Var().Id(string(casted)).Op(names.Assign).List(values...)}
-	case *types.List:
-		// test if it's a:b instead of (a:b c:d)
-		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId == names.ListId {
-			if casted.Size() < 2 {
-				return wrappedErrorComment
-			}
-
-			varId, _ := casted.LoadInt(1).(types.Identifier)
-			varCode := jen.Var().Id(string(varId))
-			if typeStmt := extractTypeId(casted.LoadInt(2)); typeStmt != nil {
-				varCode.Add(typeStmt)
-			}
-			return appliableWrapper{Renderer: varCode.Op(names.Assign).List(values...)}
-		}
-
-		var varIds []jen.Code
-		var typeIds []*jen.Statement
-		types.ForEach(casted, func(varDesc types.Object) bool {
-			switch casted2 := varDesc.(type) {
-			case types.Identifier:
-				varIds = append(varIds, jen.Id(string(casted2)))
-				typeIds = append(typeIds, nil)
-			case *types.List:
-				// assume it's in a:b format
-				varId, _ := casted2.LoadInt(1).(types.Identifier)
-				varIds = append(varIds, jen.Id(string(varId)))
-				typeIds = append(typeIds, extractTypeId(casted2.LoadInt(2)))
-			}
-			return true
-		})
-
-		// add cast calls
-		for index, typeId := range typeIds {
-			if typeId != nil {
-				values[index] = typeId.Call(values[index])
-			}
-		}
-		return appliableWrapper{Renderer: jen.List(varIds...).Op(names.Var).List(values...)}
-	}
-	return wrappedErrorComment
-}
-
 func compileToCodeSlice(env types.Environment, instructions types.Iterable) []jen.Code {
 	var codes []jen.Code
 	types.ForEach(instructions, func(instruction types.Object) bool {
@@ -270,16 +91,20 @@ func extractCode(object types.Object) jen.Code {
 	return jen.Empty()
 }
 
-// handle *type and []type format (and their combinations like [][]*type)
+// handle *type, []type, map[t1]t2 and chan types format (and their combinations like [][]*type)
 func extractTypeId(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
-		// TODO manage map[t1]t2 and chan type
-		if casted.Size() > 1 {
+		switch casted.Size() {
+		case 1:
 			op, _ := casted.LoadInt(0).(types.Identifier)
 			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
+		case 2:
+			// manage map[t1]t2
+			op, _ := casted.LoadInt(0).(types.Identifier)
+			return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
 		}
 	}
 	return nil

@@ -18,19 +18,25 @@ import "github.com/dvaumoron/foresee/types"
 const (
 	HiddenModule = "#module"
 
+	AndEqual    = "&="
 	Assign      = "="
 	Block       = "block"
 	Const       = "const"
 	Func        = "func"
 	GuessMarker = "?"
 	Import      = "import"
+	NotAndEqual = "&^="
 	Package     = "package"
 	Var         = ":="
 
 	AmpersandId types.Identifier = "&"
+	ArrowChanId types.Identifier = "<-chan"
+	ChanArrowId types.Identifier = "chan<-"
+	ChanId      types.Identifier = "chan"
 	FileId      types.Identifier = "file"
 	ListId      types.Identifier = "list"
 	LoadId      types.Identifier = "[]"
+	MapId       types.Identifier = "map"
 	StarId      types.Identifier = "*"
 	StoreId     types.Identifier = "[]="
 	UnquoteId   types.Identifier = "unquote"
@@ -39,9 +45,9 @@ const (
 /*
 TODO:
 
-for if else break continue select switch case type struct chan map default fallthrough range go defer return goto
+for if else break continue select switch case type struct default fallthrough range go defer return goto
 
-+ - * / % | ^ << >> &^ && || <- == != < > ! <= >= += -= *= /= %= &= &^= ++ --
++ - * / % | ^ << >> &^ && || == != < > ! <= >= += -= *= /= %= &= &^= ++ --
 
 Go keywords excluded:
 

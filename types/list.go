@@ -27,10 +27,9 @@ func (l *List) Add(value Object) {
 func ForEach(it Iterable, action func(Object) bool) {
 	it2 := it.Iter()
 	defer it2.Close()
+	var value Object
 	for ok := true; ok; {
-		var value Object
-		value, ok = it2.Next()
-		if ok {
+		if value, ok = it2.Next(); ok {
 			ok = action(value)
 		}
 	}
