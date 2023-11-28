@@ -129,11 +129,15 @@ func parseRune(word string) (types.Object, bool) {
 	return types.Rune(extracted), true
 }
 
-// manage melting with string literal
 func parseList(word string) (types.Object, bool) {
 	if word == names.Var {
 		return nil, false
 	}
+	return parseListSep(word, ':')
+}
+
+// manage melting with string literal
+func parseListSep(word string, sep rune) (types.Object, bool) {
 	chars := make(chan rune)
 	go sendChar(chars, word)
 	index := 0
@@ -155,7 +159,7 @@ func parseList(word string) (types.Object, bool) {
 					index++
 				}
 			}
-		case ':':
+		case sep:
 			indexes = append(indexes, index)
 		}
 		index++
@@ -273,4 +277,42 @@ func parseChanType(word string) (types.Object, bool) {
 	nodeList := types.NewList(names.ChanId)
 	nodeList.Add(handleSubWord(word[5:lastIndex]))
 	return nodeList, true
+}
+
+func parseFuncType(word string) (types.Object, bool) {
+	if !strings.HasPrefix(word, string("func[")) || strings.IndexByte(word, ']') == -1 {
+		return nil, false
+	}
+
+	// search of the corresponding closing square bracket
+	index, count := 5, 1
+IndexLoop:
+	for wordLen := len(word); index < wordLen; index++ {
+		switch word[index] {
+		case '[':
+			count++
+		case ']':
+			count--
+			if count == 0 {
+				break IndexLoop
+			}
+		}
+	}
+
+	if count != 0 {
+		// incorrect syntax
+		return nil, false
+	}
+
+	nodeList := types.NewList(names.FuncId)
+	nodeList.Add(handleTypeList(word[5:index]))
+	nodeList.Add(handleTypeList(word[index+1:]))
+	return nodeList, true
+}
+
+func handleTypeList(word string) types.Object {
+	if res, ok := parseListSep(word, ','); ok {
+		return res
+	}
+	return handleSubWord(word)
 }

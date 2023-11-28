@@ -93,8 +93,7 @@ func extractCode(object types.Object) jen.Code {
 	return jen.Empty()
 }
 
-// handle *type, []type, map[t1]t2 and chan types format (and their combinations like [][]*type)
-// TODO manage function type
+// handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
 // TODO manage anonymous struct ?
 func extractTypeId(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
@@ -102,7 +101,7 @@ func extractTypeId(object types.Object) *jen.Statement {
 		return jen.Id(string(casted))
 	case *types.List:
 		switch casted.Size() {
-		case 1:
+		case 2:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 			case names.ArrowChanId:
 				return jen.Op(names.Arrow).Chan().Add(extractTypeId(casted.LoadInt(1)))
@@ -112,10 +111,23 @@ func extractTypeId(object types.Object) *jen.Statement {
 				return jen.Chan().Add(extractTypeId(casted.LoadInt(1)))
 			case names.LoadId:
 				return jen.Index().Add(extractTypeId(casted.LoadInt(1)))
+			case names.FuncId:
+				var typeIds []jen.Code
+				switch casted2 := casted.LoadInt(1).(type) {
+				// NoneType is possible, however leaving an empty parameter list is correct in that case
+				case *types.List:
+					itType := casted2.Iter()
+					itType.Next() // skip ListId
+					types.ForEach(itType, func(elem types.Object) bool {
+						typeIds = append(typeIds, extractTypeId(elem))
+						return true
+					})
+				}
+				return jen.Func().Params(typeIds...)
 			default:
 				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
 			}
-		case 2:
+		case 3:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 			case names.LoadId:
 				// manage [size]type
@@ -129,7 +141,37 @@ func extractTypeId(object types.Object) *jen.Statement {
 			case names.MapId:
 				// manage map[t1]t2
 				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
+			case names.FuncId:
+				var typeIds []jen.Code
+				switch casted2 := casted.LoadInt(1).(type) {
+				// NoneType is possible, however leaving an empty parameter list is correct in that case
+				case *types.List:
+					itType := casted2.Iter()
+					itType.Next() // skip ListId
+					types.ForEach(itType, func(elem types.Object) bool {
+						typeIds = append(typeIds, extractTypeId(elem))
+						return true
+					})
+				}
 
+				funcCode := jen.Func().Params(typeIds...)
+				switch casted3 := casted.LoadInt(2).(type) {
+				case types.NoneType:
+					// no return
+					return funcCode
+				case *types.List:
+					var outputTypeIds []jen.Code
+					itType := casted3.Iter()
+					itType.Next() // skip ListId
+					types.ForEach(itType, func(elem types.Object) bool {
+						outputTypeIds = append(outputTypeIds, extractTypeId(elem))
+						return true
+					})
+					return funcCode.Parens(jen.List(outputTypeIds...))
+				default:
+					// single return type
+					return funcCode.Add(extractTypeId(casted3))
+				}
 			}
 		}
 	}
