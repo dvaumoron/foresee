@@ -35,11 +35,13 @@ type ConvertString func(string) (types.Object, bool)
 // needed to prevent a cycle in the initialisation
 func init() {
 	wordParsers = []ConvertString{
-		parseTrue, parseFalse, parseNone, parseUnquote, parseAddressing, parseDereference,
-		parseArrayOrSliceType, parseMapType, parseFuncType, parseList,
-		// handle "<-chan[type]", "chan<-[type]", "chan[type]" as (<-chan type), (chan<- type), (chan type)
-		parseArrowChanType, parseChanArrowType, parseChanType,
-		parseString, parseRune, parseInt, parseFloat,
+		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote,
+		// handle "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
+		// as (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
+		// typeList format is "t1,t2" as (list t1 t2)
+		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
+		// handle "<-chan[type]", "chan<-[type]", "chan[type]" "a:b" as (<-chan type), (chan<- type), (chan type), (list a b)
+		parseArrowChanType, parseChanArrowType, parseChanType, parseList,
 	}
 }
 
