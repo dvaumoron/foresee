@@ -24,6 +24,7 @@ func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return appliableWrapper{Renderer: jen.Block(codes...)}
 }
 
+// TODO manage multiline
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	value, ok := compileToCode(env, itArgs)

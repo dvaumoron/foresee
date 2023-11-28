@@ -40,6 +40,7 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrappedErrorComment
 }
 
+// TODO manage multiline (using the keyword instead of ":=" ?)
 func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	values := compileToCodeSlice(env, itArgs)
