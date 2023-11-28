@@ -140,7 +140,7 @@ func extractTypeId(object types.Object) *jen.Statement {
 				case types.Integer:
 					return jen.Index(jen.Lit(int(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
 				case types.Identifier:
-					// size is ...
+					// size should be ...
 					return jen.Index(jen.Op(string(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
 				}
 			case names.MapId:
