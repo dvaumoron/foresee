@@ -35,8 +35,8 @@ type ConvertString func(string) (types.Object, bool)
 // needed to prevent a cycle in the initialisation
 func init() {
 	wordParsers = []ConvertString{
-		parseTrue, parseFalse, parseNone, parseUnquote, parseList,
-		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
+		parseTrue, parseFalse, parseNone, parseUnquote, parseAddressing, parseDereference,
+		parseArrayOrSliceType, parseMapType, parseFuncType, parseList,
 		// handle "<-chan[type]", "chan<-[type]", "chan[type]" as (<-chan type), (chan<- type), (chan type)
 		parseArrowChanType, parseChanArrowType, parseChanType,
 		parseString, parseRune, parseInt, parseFloat,
