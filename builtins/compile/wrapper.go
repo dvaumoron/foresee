@@ -66,6 +66,7 @@ func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.
 
 		var argsCode []jen.Code
 		if arg0, ok := itArgs.Next(); ok {
+			// TODO reorganize if to improve readability
 			if casted, ok := arg0.(*types.List); ok {
 				// detect Field:value (could be a classic function call)
 				if header, _ := casted.LoadInt(0).(types.Identifier); header == names.ListId {
