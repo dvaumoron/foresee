@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	// TODO improvement with adapters to merge with wordParser
 	CustomRules = types.NewList()
 
 	wordParsers []ConvertString
