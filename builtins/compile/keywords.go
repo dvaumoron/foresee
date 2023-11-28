@@ -42,7 +42,7 @@ func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 		constId, _ := casted.LoadInt(1).(types.Identifier)
 		constCode := jen.Const().Id(string(constId))
-		if typeId := extractTypeId(casted.LoadInt(2)); typeId != nil {
+		if typeId := extractType(casted.LoadInt(2)); typeId != nil {
 			constCode.Add(typeId)
 		}
 		if ok {
@@ -86,6 +86,69 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return appliableWrapper{Renderer: jenFile}
 }
 
+func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	funcCode := jen.Func()
+	switch casted := arg0.(type) {
+	case types.Identifier:
+		funcCode.Id(string(casted))
+	case *types.List:
+		var receiverCode *jen.Statement
+		if castedReceiver, _ := casted.LoadInt(0).(*types.List); castedReceiver.Size() > 1 {
+			receiverId, _ := castedReceiver.LoadInt(0).(types.Identifier)
+			receiverCode = jen.Id(string(receiverId)).Add(extractType(castedReceiver.LoadInt(1)))
+		} else {
+			receiverCode = extractType(castedReceiver.LoadInt(0))
+		}
+
+		arg1, _ := itArgs.Next()
+		methodId, _ := arg1.(types.Identifier)
+		funcCode.Parens(receiverCode).Id(string(methodId))
+	}
+
+	argN, _ := itArgs.Next()
+	params, ok := argN.(*types.List)
+	if ok {
+		return wrappedErrorComment
+	}
+
+	var paramCodes []jen.Code
+	types.ForEach(params, func(elem types.Object) bool {
+		// assume it's in a:b format
+		paramDesc, _ := elem.(*types.List)
+		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
+		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
+		return true
+	})
+	funcCode.Params(paramCodes...)
+
+	var codes []jen.Code
+	argN, _ = itArgs.Next()
+	switch casted3 := argN.(type) {
+	case types.Identifier:
+		funcCode.Id(string(casted3))
+	case *types.List:
+		if head, _ := casted3.LoadInt(0).(types.Identifier); head == names.ListId {
+			var typeCodes []jen.Code
+			types.ForEach(casted3, func(elem types.Object) bool {
+				typeCodes = append(typeCodes, extractType(elem))
+				return true
+			})
+			funcCode.Parens(jen.List(typeCodes...))
+		} else {
+			if typeCode := extractType(argN); typeCode == nil {
+				// can not extract type, so argN is the first instruction of the code block
+				codes = []jen.Code{extractCode(argN.Eval(env))}
+			} else {
+				funcCode.Add(typeCode)
+			}
+		}
+	}
+
+	codes = append(codes, compileToCodeSlice(env, itArgs)...)
+	return appliableWrapper{Renderer: funcCode.Block(codes...)}
+}
+
 func importForm(env types.Environment, itArgs types.Iterator) types.Object {
 	imports, _ := env.LoadStr(hiddenImportsName)
 	importList, _ := imports.(*types.List)
@@ -118,4 +181,9 @@ func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
 		env.StoreStr(hiddenPackageName, types.Identifier(casted))
 	}
 	return types.None
+}
+
+func returnForm(env types.Environment, itArgs types.Iterator) types.Object {
+	codes := compileToCodeSlice(env, itArgs)
+	return appliableWrapper{Renderer: jen.Return(codes...)}
 }

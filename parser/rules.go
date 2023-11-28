@@ -36,10 +36,10 @@ type ConvertString func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote,
-		// handle "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
-		// as (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
+		// handle "...type", "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
+		// as (... type), (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
 		// typeList format is "t1,t2" as (list t1 t2)
-		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
+		parseEllipsis, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
 		// handle "<-chan[type]", "chan<-[type]", "chan[type]" "a:b" as (<-chan type), (chan<- type), (chan type), (list a b)
 		parseArrowChanType, parseChanArrowType, parseChanType, parseList,
 	}
@@ -202,6 +202,16 @@ func parseUnquote(word string) (types.Object, bool) {
 	}
 	nodeList := types.NewList(types.Identifier(names.UnquoteId))
 	nodeList.Add(handleSubWord(word[1:]))
+	return nodeList, true
+}
+
+func parseEllipsis(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if !strings.HasPrefix(word, string(names.EllipsisId)) || len(word) == 3 {
+		return nil, false
+	}
+	nodeList := types.NewList(names.EllipsisId)
+	nodeList.Add(handleSubWord(word[3:]))
 	return nodeList, true
 }
 

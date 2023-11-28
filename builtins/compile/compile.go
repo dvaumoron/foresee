@@ -45,8 +45,10 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
+	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm))
 	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))
 	base.StoreStr(names.Package, types.MakeNativeAppliable(packageForm))
+	base.StoreStr(names.Return, types.MakeNativeAppliable(returnForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 
 	// TODO
@@ -74,6 +76,14 @@ func extractCode(object types.Object) jen.Code {
 		if code, ok := casted.Renderer.(jen.Code); ok {
 			return code
 		}
+	case literalWrapper:
+		if code, ok := casted.Renderer.(jen.Code); ok {
+			return code
+		}
+	case wrapper:
+		if code, ok := casted.Renderer.(jen.Code); ok {
+			return code
+		}
 	case types.Boolean:
 		return jen.Lit(bool(casted))
 	case types.Integer:
@@ -95,7 +105,7 @@ func extractCode(object types.Object) jen.Code {
 
 // handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
 // TODO manage anonymous struct ?
-func extractTypeId(object types.Object) *jen.Statement {
+func extractType(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
@@ -103,17 +113,14 @@ func extractTypeId(object types.Object) *jen.Statement {
 		switch casted.Size() {
 		case 2:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
-			case "":
-				// not an identifier
-				return nil
 			case names.ArrowChanId:
-				return jen.Op(names.Arrow).Chan().Add(extractTypeId(casted.LoadInt(1)))
+				return jen.Op(names.Arrow).Chan().Add(extractType(casted.LoadInt(1)))
 			case names.ChanArrowId:
-				return jen.Chan().Op(names.Arrow).Add(extractTypeId(casted.LoadInt(1)))
+				return jen.Chan().Op(names.Arrow).Add(extractType(casted.LoadInt(1)))
 			case names.ChanId:
-				return jen.Chan().Add(extractTypeId(casted.LoadInt(1)))
+				return jen.Chan().Add(extractType(casted.LoadInt(1)))
 			case names.LoadId:
-				return jen.Index().Add(extractTypeId(casted.LoadInt(1)))
+				return jen.Index().Add(extractType(casted.LoadInt(1)))
 			case names.FuncId:
 				params, ok := casted.LoadInt(1).(*types.List)
 				if !ok {
@@ -125,12 +132,12 @@ func extractTypeId(object types.Object) *jen.Statement {
 
 				var typeIds []jen.Code
 				types.ForEach(itType, func(elem types.Object) bool {
-					typeIds = append(typeIds, extractTypeId(elem))
+					typeIds = append(typeIds, extractType(elem))
 					return true
 				})
 				return jen.Func().Params(typeIds...)
-			default:
-				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
+			case names.AmpersandId, names.EllipsisId, names.StarId:
+				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1)))
 			}
 		case 3:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
@@ -138,14 +145,14 @@ func extractTypeId(object types.Object) *jen.Statement {
 				// manage [size]type
 				switch castedSize := casted.LoadInt(1).(type) {
 				case types.Integer:
-					return jen.Index(jen.Lit(int(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
+					return jen.Index(jen.Lit(int(castedSize))).Add(extractType(casted.LoadInt(2)))
 				case types.Identifier:
 					// size should be ...
-					return jen.Index(jen.Op(string(castedSize))).Add(extractTypeId(casted.LoadInt(2)))
+					return jen.Index(jen.Op(string(castedSize))).Add(extractType(casted.LoadInt(2)))
 				}
 			case names.MapId:
 				// manage map[t1]t2
-				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
+				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
 			case names.FuncId:
 				param, ok := casted.LoadInt(1).(*types.List)
 				if !ok {
@@ -157,7 +164,7 @@ func extractTypeId(object types.Object) *jen.Statement {
 
 				var typeIds []jen.Code
 				types.ForEach(itType, func(elem types.Object) bool {
-					typeIds = append(typeIds, extractTypeId(elem))
+					typeIds = append(typeIds, extractType(elem))
 					return true
 				})
 				funcCode := jen.Func().Params(typeIds...)
@@ -172,7 +179,7 @@ func extractTypeId(object types.Object) *jen.Statement {
 
 				var outputTypeIds []jen.Code
 				types.ForEach(itType, func(elem types.Object) bool {
-					outputTypeIds = append(outputTypeIds, extractTypeId(elem))
+					outputTypeIds = append(outputTypeIds, extractType(elem))
 					return true
 				})
 
