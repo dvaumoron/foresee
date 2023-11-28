@@ -103,6 +103,9 @@ func extractTypeId(object types.Object) *jen.Statement {
 		switch casted.Size() {
 		case 2:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+			case "":
+				// not an identifier
+				return nil
 			case names.ArrowChanId:
 				return jen.Op(names.Arrow).Chan().Add(extractTypeId(casted.LoadInt(1)))
 			case names.ChanArrowId:
@@ -112,17 +115,19 @@ func extractTypeId(object types.Object) *jen.Statement {
 			case names.LoadId:
 				return jen.Index().Add(extractTypeId(casted.LoadInt(1)))
 			case names.FuncId:
-				var typeIds []jen.Code
-				switch casted2 := casted.LoadInt(1).(type) {
-				// NoneType is possible, however leaving an empty parameter list is correct in that case
-				case *types.List:
-					itType := casted2.Iter()
-					itType.Next() // skip ListId
-					types.ForEach(itType, func(elem types.Object) bool {
-						typeIds = append(typeIds, extractTypeId(elem))
-						return true
-					})
+				params, ok := casted.LoadInt(1).(*types.List)
+				if !ok {
+					return nil
 				}
+
+				itType := params.Iter() // no need to close (done in ForEach)
+				itType.Next()           // skip ListId
+
+				var typeIds []jen.Code
+				types.ForEach(itType, func(elem types.Object) bool {
+					typeIds = append(typeIds, extractTypeId(elem))
+					return true
+				})
 				return jen.Func().Params(typeIds...)
 			default:
 				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1)))
@@ -142,35 +147,45 @@ func extractTypeId(object types.Object) *jen.Statement {
 				// manage map[t1]t2
 				return jen.Op(string(op)).Add(extractTypeId(casted.LoadInt(1))).Add(extractTypeId(casted.LoadInt(2)))
 			case names.FuncId:
-				var typeIds []jen.Code
-				switch casted2 := casted.LoadInt(1).(type) {
-				// NoneType is possible, however leaving an empty parameter list is correct in that case
-				case *types.List:
-					itType := casted2.Iter()
-					itType.Next() // skip ListId
-					types.ForEach(itType, func(elem types.Object) bool {
-						typeIds = append(typeIds, extractTypeId(elem))
-						return true
-					})
+				param, ok := casted.LoadInt(1).(*types.List)
+				if !ok {
+					return nil
 				}
 
+				itType := param.Iter() // no need to close (done in ForEach)
+				itType.Next()          // skip ListId
+
+				var typeIds []jen.Code
+				types.ForEach(itType, func(elem types.Object) bool {
+					typeIds = append(typeIds, extractTypeId(elem))
+					return true
+				})
+
 				funcCode := jen.Func().Params(typeIds...)
-				switch casted3 := casted.LoadInt(2).(type) {
-				case types.NoneType:
+
+				returns, ok := casted.LoadInt(2).(*types.List)
+				if !ok {
+					return nil
+				}
+
+				itType = returns.Iter() // no need to close (done in ForEach)
+				itType.Next()           // skip ListId
+
+				var outputTypeIds []jen.Code
+				types.ForEach(itType, func(elem types.Object) bool {
+					outputTypeIds = append(outputTypeIds, extractTypeId(elem))
+					return true
+				})
+
+				switch len(outputTypeIds) {
+				case 0:
 					// no return
 					return funcCode
-				case *types.List:
-					var outputTypeIds []jen.Code
-					itType := casted3.Iter()
-					itType.Next() // skip ListId
-					types.ForEach(itType, func(elem types.Object) bool {
-						outputTypeIds = append(outputTypeIds, extractTypeId(elem))
-						return true
-					})
-					return funcCode.Parens(jen.List(outputTypeIds...))
-				default:
+				case 1:
 					// single return type
-					return funcCode.Add(extractTypeId(casted3))
+					return funcCode.Add(outputTypeIds[0])
+				default:
+					return funcCode.Parens(jen.List(outputTypeIds...))
 				}
 			}
 		}

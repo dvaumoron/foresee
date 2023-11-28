@@ -36,7 +36,7 @@ type ConvertString func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseUnquote, parseList,
-		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType,
+		parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
 		// handle "<-chan[type]", "chan<-[type]", "chan[type]" as (<-chan type), (chan<- type), (chan type)
 		parseArrowChanType, parseChanArrowType, parseChanType,
 		parseString, parseRune, parseInt, parseFloat,
@@ -311,8 +311,15 @@ IndexLoop:
 }
 
 func handleTypeList(word string) types.Object {
+	nodeList := types.NewList(names.ListId)
+	if word == "" {
+		return nodeList
+	}
+
 	if res, ok := parseListSep(word, ','); ok {
 		return res
 	}
-	return handleSubWord(word)
+
+	nodeList.Add(HandleClassicWord(word))
+	return nodeList
 }
