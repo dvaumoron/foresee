@@ -160,7 +160,6 @@ func extractTypeId(object types.Object) *jen.Statement {
 					typeIds = append(typeIds, extractTypeId(elem))
 					return true
 				})
-
 				funcCode := jen.Func().Params(typeIds...)
 
 				returns, ok := casted.LoadInt(2).(*types.List)
