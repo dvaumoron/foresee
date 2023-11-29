@@ -45,7 +45,7 @@ func UseAdder() {
 
 	fmt.Println("Result 1 is", Addition(NewAdder(a), b))
 
-	c, d := 1, int(2)
+	c, d := 1, 2
 
 	fmt.Println("Result 2 is", Addition(MakeAdderInt(c), d))
 }
