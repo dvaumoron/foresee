@@ -24,17 +24,26 @@ var (
 	_ types.Appliable = literalWrapper{}
 )
 
-type wrapper struct {
+// match jen types
+type Renderer interface {
 	types.Renderer
+	jen.Code
+}
+
+// Augment jen types with Eval in order to match types.Object
+type wrapper struct {
+	Renderer
 }
 
 func (w wrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
+// Augment jen types with Eval in order to match types.Object
+// and an Apply which create a function call
 type appliableWrapper struct {
 	// not composing wrapper to avoid a type changement on eval
-	types.Renderer
+	Renderer
 }
 
 func (w appliableWrapper) Eval(types.Environment) types.Object {
@@ -50,9 +59,11 @@ func (w appliableWrapper) Apply(env types.Environment, args types.Iterable) type
 	return w
 }
 
+// Augment jen types with Eval in order to match types.Object
+// and an Apply which create a literal
 type literalWrapper struct {
 	// not composing wrapper to avoid a type changement on eval
-	types.Renderer
+	Renderer
 }
 
 func (w literalWrapper) Eval(types.Environment) types.Object {

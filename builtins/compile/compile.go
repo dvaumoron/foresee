@@ -41,6 +41,7 @@ func Compile(l *types.List) types.Object {
 
 func initBuitins() types.BaseEnvironment {
 	base := types.MakeBaseEnvironment()
+	base.StoreStr(string(names.AmpersandId), types.MakeNativeAppliable(addressOrBitwiseAndForm))
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
@@ -71,20 +72,14 @@ func compileToCode(env types.Environment, instructions types.Iterator) (jen.Code
 }
 
 // manage wrapper and literals
-func extractCode(object types.Object) jen.Code {
+func extractCode(object types.Object) Renderer {
 	switch casted := object.(type) {
 	case appliableWrapper:
-		if code, ok := casted.Renderer.(jen.Code); ok {
-			return code
-		}
+		return casted.Renderer
 	case literalWrapper:
-		if code, ok := casted.Renderer.(jen.Code); ok {
-			return code
-		}
+		return casted.Renderer
 	case wrapper:
-		if code, ok := casted.Renderer.(jen.Code); ok {
-			return code
-		}
+		return casted.Renderer
 	case types.Boolean:
 		return jen.Lit(bool(casted))
 	case types.Integer:

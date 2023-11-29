@@ -19,6 +19,30 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	valueCodesTemp := compileToCodeSlice(env, itArgs)
+
+	if len(valueCodesTemp) == 0 {
+		// adressing, usable to build a literal
+		return literalWrapper{Renderer: jen.Op(string(names.AmpersandId)).Add(extractType(arg0))}
+	}
+
+	andCode, ok := extractCode(arg0.Eval(env)).(*jen.Statement)
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	for _, code := range compileToCodeSlice(env, itArgs) {
+		andCode.Op(string(names.AmpersandId)).Add(code)
+	}
+	return wrapper{Renderer: andCode}
+}
+
 func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAssign(env, itArgs, names.Assign)
 }
