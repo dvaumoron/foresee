@@ -30,7 +30,7 @@ const (
 )
 
 var (
-	wrappedErrorComment = appliableWrapper{Renderer: jen.Comment("line with error, can't generate correct go code")}
+	wrappedErrorComment = wrapper{Renderer: jen.Comment("line with error, can't generate correct go code")}
 
 	Builtins = initBuitins()
 )
@@ -45,7 +45,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
-	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm))
+	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm)) // TODO lambda keyword to manage closure case
 	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))
 	base.StoreStr(names.Package, types.MakeNativeAppliable(packageForm))
 	base.StoreStr(names.Return, types.MakeNativeAppliable(returnForm))

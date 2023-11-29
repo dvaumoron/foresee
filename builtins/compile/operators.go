@@ -24,10 +24,10 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	values := compileToCodeSlice(env, itArgs)
 	switch casted := arg0.(type) {
 	case types.Identifier:
-		return appliableWrapper{Renderer: jen.Id(string(casted)).Op(names.Assign).Add(values[0])}
+		return wrapper{Renderer: jen.Id(string(casted)).Op(names.Assign).Add(values[0])}
 	case *types.List:
 		if id := extractAssignTargetFromList(env, casted); id != nil {
-			return appliableWrapper{Renderer: id.Op(names.Assign).Add(values[0])}
+			return wrapper{Renderer: id.Op(names.Assign).Add(values[0])}
 		}
 
 		var ids []jen.Code
@@ -35,7 +35,7 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 			ids = append(ids, extractAssignTarget(env, elem))
 			return true
 		})
-		return appliableWrapper{Renderer: jen.List(ids...).Op(names.Assign).List(values...)}
+		return wrapper{Renderer: jen.List(ids...).Op(names.Assign).List(values...)}
 	}
 	return wrappedErrorComment
 }
@@ -47,14 +47,14 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if len(values) == 0 {
 		if list, ok := arg0.(*types.List); ok && list.Size() > 2 {
 			varId, _ := list.LoadInt(1).(types.Identifier)
-			return appliableWrapper{Renderer: jen.Var().Id(string(varId)).Add(extractType(list.LoadInt(2)))}
+			return wrapper{Renderer: jen.Var().Id(string(varId)).Add(extractType(list.LoadInt(2)))}
 		}
 		return wrappedErrorComment
 	}
 
 	switch casted := arg0.(type) {
 	case types.Identifier:
-		return appliableWrapper{Renderer: jen.Var().Id(string(casted)).Op(names.Assign).Add(values[0])}
+		return wrapper{Renderer: jen.Var().Id(string(casted)).Op(names.Assign).Add(values[0])}
 	case *types.List:
 		// test if it's a:b instead of (a:b c:d)
 		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId == names.ListId {
@@ -67,7 +67,7 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 			if typeStmt := extractType(casted.LoadInt(2)); typeStmt != nil {
 				varCode.Add(typeStmt)
 			}
-			return appliableWrapper{Renderer: varCode.Op(names.Assign).List(values...)}
+			return wrapper{Renderer: varCode.Op(names.Assign).List(values...)}
 		}
 
 		var varIds []jen.Code
@@ -92,7 +92,7 @@ func varForm(env types.Environment, itArgs types.Iterator) types.Object {
 				values[index] = typeId.Call(values[index])
 			}
 		}
-		return appliableWrapper{Renderer: jen.List(varIds...).Op(names.Var).List(values...)}
+		return wrapper{Renderer: jen.List(varIds...).Op(names.Var).List(values...)}
 	}
 	return wrappedErrorComment
 }

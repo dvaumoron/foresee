@@ -21,37 +21,83 @@ import (
 
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	codes := compileToCodeSlice(env, itArgs)
-	return appliableWrapper{Renderer: jen.Block(codes...)}
+	return wrapper{Renderer: jen.Block(codes...)}
 }
 
-// TODO manage multiline
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	value, ok := compileToCode(env, itArgs)
 	switch casted := arg0.(type) {
 	case types.Identifier:
+		// detect "const name value"
+		value, ok := compileToCode(env, itArgs)
 		if !ok {
 			// no declared type and no value
 			return wrappedErrorComment
 		}
-		return appliableWrapper{Renderer: jen.Const().Id(string(casted)).Op(names.Assign).Add(value)}
+		return wrapper{Renderer: jen.Const().Id(string(casted)).Op(names.Assign).Add(value)}
 	case *types.List:
-		// expect a:b
-		if firstId, _ := casted.LoadInt(0).(types.Identifier); firstId != names.ListId {
-			return wrappedErrorComment
+		switch casted2 := casted.LoadInt(0).(type) {
+		case types.Identifier:
+			// detect "const name:type value"
+			if casted2 == names.ListId {
+				constId, _ := casted.LoadInt(1).(types.Identifier)
+				constCode := jen.Const().Id(string(constId))
+				if typeId := extractType(casted.LoadInt(2)); typeId != nil {
+					constCode.Add(typeId)
+				}
+				value, ok := compileToCode(env, itArgs)
+				if ok {
+					constCode.Op(names.Assign).Add(value)
+				}
+				return wrapper{Renderer: constCode}
+			}
+
+			if casted.Size() > 1 {
+				// "const (name value)"
+				valueCode := extractCode(casted.LoadInt(1).Eval(env))
+				defCodes := []jen.Code{jen.Id(string(casted2)).Op(names.Assign).Add(valueCode)}
+
+				// following lines
+				defCodes = processDefLines(env, itArgs, defCodes)
+
+				return wrapper{Renderer: jen.Const().Defs(defCodes...)}
+			}
+		case *types.List:
+			// "const (name:type value)"
+			constId, _ := casted2.LoadInt(1).(types.Identifier)
+			typeCode := extractType(casted2.LoadInt(2))
+			valueCode := extractCode(casted.LoadInt(1).Eval(env))
+			defCodes := []jen.Code{jen.Id(string(constId)).Add(typeCode).Op(names.Assign).Add(valueCode)}
+
+			// following lines
+			defCodes = processDefLines(env, itArgs, defCodes)
+
+			return wrapper{Renderer: jen.Const().Defs(defCodes...)}
 		}
 
-		constId, _ := casted.LoadInt(1).(types.Identifier)
-		constCode := jen.Const().Id(string(constId))
-		if typeId := extractType(casted.LoadInt(2)); typeId != nil {
-			constCode.Add(typeId)
-		}
-		if ok {
-			constCode.Op(names.Assign).Add(value)
-		}
-		return appliableWrapper{Renderer: constCode}
 	}
 	return wrappedErrorComment
+}
+
+// handle "(name value)" or "(name:type)" or "(name:type value)"
+func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []jen.Code) []jen.Code {
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		defDesc, _ := elem.(*types.List)
+		var defCode *jen.Statement
+		switch casted := defDesc.LoadInt(0).(type) {
+		case types.Identifier:
+			defCode = jen.Id(string(casted))
+		case *types.List:
+			constId, _ := casted.LoadInt(1).(types.Identifier)
+			defCode = jen.Id(string(constId)).Add(extractType(casted.LoadInt(2)))
+		}
+		if defDesc.Size() > 1 {
+			defCode.Op(names.Assign).Add(extractCode(defDesc.LoadInt(1).Eval(env)))
+		}
+		defCodes = append(defCodes, defCode)
+		return true
+	})
+	return defCodes
 }
 
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -84,7 +130,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	})
 
 	jenFile.Add(codes...)
-	return appliableWrapper{Renderer: jenFile}
+	return wrapper{Renderer: jenFile}
 }
 
 func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -109,13 +155,13 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	argN, _ := itArgs.Next()
 	params, ok := argN.(*types.List)
-	if ok {
+	if !ok {
 		return wrappedErrorComment
 	}
 
 	var paramCodes []jen.Code
 	types.ForEach(params, func(elem types.Object) bool {
-		// assume it's in a:b format
+		// assume it's in "name:type" format (type should be inferred if not declared)
 		paramDesc, _ := elem.(*types.List)
 		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
 		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
@@ -147,7 +193,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	}
 
 	codes = append(codes, compileToCodeSlice(env, itArgs)...)
-	return appliableWrapper{Renderer: funcCode.Block(codes...)}
+	return wrapper{Renderer: funcCode.Block(codes...)}
 }
 
 func importForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -186,5 +232,5 @@ func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func returnForm(env types.Environment, itArgs types.Iterator) types.Object {
 	codes := compileToCodeSlice(env, itArgs)
-	return appliableWrapper{Renderer: jen.Return(codes...)}
+	return wrapper{Renderer: jen.Return(codes...)}
 }
