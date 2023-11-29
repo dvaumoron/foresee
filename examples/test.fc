@@ -26,14 +26,13 @@ func Addition(a b) ?
 	return (. a Add b)
 
 func UseAdder() # no ? (there is no return)
-	:= a:float64 # no value to use go default
-	= a 1 # use = for simple assignation (does not allow type annotation)
-    := b:float64 2 # render the var form when there is only one variable (use outside function definition)
+	var a:float64
+	= a 1
+    var b:float64 2
 
 	. fmt Println "Result 1 is" (Addition (NewAdder a) b)
 
-    # can rely on go inference
-	:= (c d:int) 1 2
+	:= (c d) 1 2
 
 	. fmt Println "Result 2 is" (Addition (MakeAdderInt c) d)
 

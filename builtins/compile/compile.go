@@ -44,6 +44,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
+	base.StoreStr(names.DeclareAssign, types.MakeNativeAppliable(declareAssignForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
 	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm)) // TODO lambda keyword to manage closure case
 	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))

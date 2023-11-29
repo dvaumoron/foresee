@@ -25,45 +25,51 @@ func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processDef(env, itArgs, jen.Const())
+}
+
+// baseCode is not cloned (must generate a new one on each call)
+func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Statement) types.Object {
+	// K is supposed to be "const" or "var" (passed as baseCode)
 	arg0, _ := itArgs.Next()
 	switch casted := arg0.(type) {
 	case types.Identifier:
-		// detect "const name value"
+		// detect "K name value"
 		value, ok := compileToCode(env, itArgs)
 		if !ok {
 			// no declared type and no value
 			return wrappedErrorComment
 		}
-		return wrapper{Renderer: jen.Const().Id(string(casted)).Op(names.Assign).Add(value)}
+		return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(value)}
 	case *types.List:
 		switch casted2 := casted.LoadInt(0).(type) {
 		case types.Identifier:
-			// detect "const name:type value"
+			// detect "K name:type value"
 			if casted2 == names.ListId {
 				constId, _ := casted.LoadInt(1).(types.Identifier)
-				constCode := jen.Const().Id(string(constId))
+				defCode := baseCode.Id(string(constId))
 				if typeId := extractType(casted.LoadInt(2)); typeId != nil {
-					constCode.Add(typeId)
+					defCode.Add(typeId)
 				}
 				value, ok := compileToCode(env, itArgs)
 				if ok {
-					constCode.Op(names.Assign).Add(value)
+					defCode.Op(names.Assign).Add(value)
 				}
-				return wrapper{Renderer: constCode}
+				return wrapper{Renderer: defCode}
 			}
 
 			if casted.Size() > 1 {
-				// "const (name value)"
+				// "K (name value)"
 				valueCode := extractCode(casted.LoadInt(1).Eval(env))
 				defCodes := []jen.Code{jen.Id(string(casted2)).Op(names.Assign).Add(valueCode)}
 
 				// following lines
 				defCodes = processDefLines(env, itArgs, defCodes)
 
-				return wrapper{Renderer: jen.Const().Defs(defCodes...)}
+				return wrapper{Renderer: baseCode.Defs(defCodes...)}
 			}
 		case *types.List:
-			// "const (name:type value)"
+			// "K (name:type value)"
 			constId, _ := casted2.LoadInt(1).(types.Identifier)
 			typeCode := extractType(casted2.LoadInt(2))
 			valueCode := extractCode(casted.LoadInt(1).Eval(env))
@@ -72,9 +78,8 @@ func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 			// following lines
 			defCodes = processDefLines(env, itArgs, defCodes)
 
-			return wrapper{Renderer: jen.Const().Defs(defCodes...)}
+			return wrapper{Renderer: baseCode.Defs(defCodes...)}
 		}
-
 	}
 	return wrappedErrorComment
 }
@@ -233,4 +238,8 @@ func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
 func returnForm(env types.Environment, itArgs types.Iterator) types.Object {
 	codes := compileToCodeSlice(env, itArgs)
 	return wrapper{Renderer: jen.Return(codes...)}
+}
+
+func varForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processDef(env, itArgs, jen.Var())
 }

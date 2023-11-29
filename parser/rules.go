@@ -122,7 +122,7 @@ func parseRune(word string) (types.Object, bool) {
 }
 
 func parseList(word string) (types.Object, bool) {
-	if word == names.Var {
+	if word == names.DeclareAssign {
 		return nil, false
 	}
 	return parseListSep(word, ':')
