@@ -29,6 +29,7 @@ func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types
 
 	if len(valueCodesTemp) == 0 {
 		// adressing, usable to build a literal
+		// TODO manage a[b]
 		return literalWrapper{Renderer: jen.Op(string(names.AmpersandId)).Add(extractType(arg0))}
 	}
 
