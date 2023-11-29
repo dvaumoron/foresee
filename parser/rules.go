@@ -22,16 +22,13 @@ import (
 )
 
 var (
-	// TODO improvement with adapters to merge with wordParser
-	CustomRules = types.NewList()
-
 	wordParsers []ConvertString
 
 	// an empty environment to execute custom rules
 	BuiltinsCopy types.Environment = types.MakeBaseEnvironment()
 )
 
-type ConvertString func(string) (types.Object, bool)
+type ConvertString = func(string) (types.Object, bool)
 
 // needed to prevent a cycle in the initialisation
 func init() {
@@ -46,33 +43,25 @@ func init() {
 	}
 }
 
-func HandleClassicWord(word string) types.Object {
-	var res types.Object
-	continueLoop := true
-	if res, continueLoop = nativeRules(word); continueLoop {
+// Must be called before the parsing of files to affect them
+func AddCustomRule(rule types.Appliable) {
+	// TODO use a mutex ? (will macro or parsing run concurrently ???)
+	wordParsers = append(wordParsers, func(word string) (types.Object, bool) {
 		args := types.NewList(types.String(word))
-		types.ForEach(CustomRules, func(object types.Object) bool {
-			if rule, ok := object.(types.Appliable); ok {
-				// The Apply must return None if it fails.
-				node := rule.Apply(BuiltinsCopy, args)
-				if _, continueLoop = node.(types.NoneType); !continueLoop {
-					res = node
-				}
-			}
-			return continueLoop
-		})
-	}
-	return res
+		node := rule.Apply(BuiltinsCopy, args)
+		// The Apply must return None if it fails.
+		_, isNone := node.(types.NoneType)
+		return node, !isNone
+	})
 }
 
-// An identifier and true is returned when no rule match
-func nativeRules(word string) (types.Object, bool) {
+func HandleClassicWord(word string) types.Object {
 	for _, parser := range wordParsers {
-		if node, ok := parser(word); ok {
-			return node, false
+		if node, match := parser(word); match {
+			return node
 		}
 	}
-	return types.Identifier(word), true
+	return types.Identifier(word)
 }
 
 func parseTrue(word string) (types.Object, bool) {
