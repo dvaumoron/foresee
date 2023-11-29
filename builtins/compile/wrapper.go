@@ -66,25 +66,23 @@ func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.
 
 		var argsCode []jen.Code
 		if arg0, ok := itArgs.Next(); ok {
-			// TODO reorganize if to improve readability
-			if casted, ok := arg0.(*types.List); ok {
-				// detect Field:value (could be a classic function call)
-				if header, _ := casted.LoadInt(0).(types.Identifier); header == names.ListId {
-					fieldId, _ := casted.LoadInt(1).(types.Identifier)
-					dict := jen.Dict{jen.Id(string(fieldId)): extractCode(casted.LoadInt(2).Eval(env))}
-					types.ForEach(itArgs, func(elem types.Object) bool {
-						fieldDesc, _ := elem.(*types.List)
-						fieldId, _ := fieldDesc.LoadInt(1).(types.Identifier)
-						dict[jen.Id(string(fieldId))] = extractCode(fieldDesc.LoadInt(2).Eval(env))
-						return true
-					})
-					argsCode = []jen.Code{dict}
-				}
-			}
-
-			if len(argsCode) == 0 {
-				argsCode = []jen.Code{extractCode(arg0)}
-				argsCode = append(argsCode, compileToCodeSlice(env, itArgs)...)
+			casted, _ := arg0.(*types.List)
+			header, _ := casted.LoadInt(0).(types.Identifier)
+			// detect Field:value (could be a classic function/operator call)
+			if header == names.ListId {
+				fieldId, _ := casted.LoadInt(1).(types.Identifier)
+				dict := jen.Dict{jen.Id(string(fieldId)): extractCode(casted.LoadInt(2).Eval(env))}
+				types.ForEach(itArgs, func(elem types.Object) bool {
+					fieldDesc, _ := elem.(*types.List)
+					fieldId, _ := fieldDesc.LoadInt(1).(types.Identifier)
+					dict[jen.Id(string(fieldId))] = extractCode(fieldDesc.LoadInt(2).Eval(env))
+					return true
+				})
+				argsCode = []jen.Code{dict}
+			} else {
+				argsCode = []jen.Code{extractCode(arg0.Eval(env))}
+				argsCodeTemp := compileToCodeSlice(env, itArgs)
+				argsCode = append(argsCode, argsCodeTemp...)
 			}
 		}
 		// no more appliable ("type{A:a}{B:b}" is not valid)

@@ -61,8 +61,9 @@ func extractIndex(args []Object, max int) (int, int) {
 	return convertToInt(args[0], 0), convertToInt(args[1], max)
 }
 
+// No panic with nil receiver
 func (l *List) LoadInt(index int) Object {
-	if index < 0 || index >= len(l.inner) {
+	if l == nil || index < 0 || index >= len(l.inner) {
 		return None
 	}
 	return l.inner[index]
