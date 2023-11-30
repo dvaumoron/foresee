@@ -41,6 +41,7 @@ func Compile(l *types.List) types.Object {
 
 func initBuitins() types.BaseEnvironment {
 	base := types.MakeBaseEnvironment()
+	base.StoreStr(names.AddAssign, types.MakeNativeAppliable(addAssignForm))
 	base.StoreStr(string(names.AmpersandId), types.MakeNativeAppliable(addressOrBitwiseAndForm))
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
@@ -51,10 +52,13 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))
 	base.StoreStr(string(names.LoadId), types.MakeNativeAppliable(indexOrSliceForm))
 	base.StoreStr(names.Minus, types.MakeNativeAppliable(substractionForm))
+	base.StoreStr(names.MinusAssign, types.MakeNativeAppliable(substractAssignForm))
 	base.StoreStr(names.Package, types.MakeNativeAppliable(packageForm))
 	base.StoreStr(names.Plus, types.MakeNativeAppliable(additionForm))
 	base.StoreStr(names.Return, types.MakeNativeAppliable(returnForm))
 	base.StoreStr(names.Slash, types.MakeNativeAppliable(divideForm))
+	base.StoreStr(names.SlashAssign, types.MakeNativeAppliable(divideAssignForm))
+	base.StoreStr(names.StarAssign, types.MakeNativeAppliable(multiplyAssignForm))
 	base.StoreStr(string(names.StarId), types.MakeNativeAppliable(dereferenceOrMultiplyForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 
@@ -72,7 +76,7 @@ func compileToCodeSlice(env types.Environment, iterable types.Iterable) []jen.Co
 }
 
 func compileToCode(env types.Environment, object types.Object) Renderer {
-	return compileBasicType(object, func(object types.Object) Renderer {
+	return handleBasicType(object, true, func(object types.Object) Renderer {
 		switch casted := object.Eval(env).(type) {
 		case appliableWrapper:
 			return casted.Renderer
@@ -81,15 +85,17 @@ func compileToCode(env types.Environment, object types.Object) Renderer {
 		case wrapper:
 			return casted.Renderer
 		default:
-			return compileBasicType(casted, emptyCode)
+			return handleBasicType(casted, false, emptyCode)
 		}
 	})
 }
 
-func compileBasicType(object types.Object, defaultCase func(types.Object) Renderer) Renderer {
+func handleBasicType(object types.Object, noneToNil bool, defaultCase func(types.Object) Renderer) Renderer {
 	switch casted := object.(type) {
 	case types.NoneType:
-		return jen.Empty()
+		if noneToNil {
+			return jen.Nil()
+		}
 	case types.Boolean:
 		return jen.Lit(bool(casted))
 	case types.Integer:
@@ -236,26 +242,27 @@ func extractAssignTarget(env types.Environment, object types.Object) *jen.Statem
 }
 
 func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.Statement {
-	if list.Size() > 1 {
-		switch op, _ := list.LoadInt(0).(types.Identifier); op {
-		case names.LoadId:
-			it := list.Iter() // no need to close (done in ForEach)
-			it.Next()         // skip LoadId
+	switch op, _ := list.LoadInt(0).(types.Identifier); op {
+	case names.LoadId:
+		it := list.Iter()
+		defer it.Close()
 
-			id, _ := it.Next()
-			index, ok := it.Next()
-			if !ok {
-				return nil
-			}
+		it.Next() // skip LoadId
+		id, _ := it.Next()
+		index, ok := it.Next()
+		if !ok {
+			return nil
+		}
 
-			castedId, _ := id.(types.Identifier)
-			code := jen.Id(string(castedId)).Index(compileToCode(env, index)) // can not be slicing
-			types.ForEach(it, func(elem types.Object) bool {
-				code.Index(compileToCode(env, elem)) // can not be slicing
-				return true
-			})
-			return code
-		case names.StarId:
+		castedId, _ := id.(types.Identifier)
+		code := jen.Id(string(castedId)).Index(compileToCode(env, index)) // can not be slicing
+		types.ForEach(it, func(elem types.Object) bool {
+			code.Index(compileToCode(env, elem)) // can not be slicing
+			return true
+		})
+		return code
+	case names.StarId:
+		if list.Size() > 1 {
 			return jen.Op(string(op)).Add(extractAssignTarget(env, list.LoadInt(1)))
 		}
 	}

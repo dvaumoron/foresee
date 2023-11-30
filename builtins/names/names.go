@@ -18,6 +18,7 @@ import "github.com/dvaumoron/foresee/types"
 const (
 	HiddenModule = "#module"
 
+	AddAssign     = "+="
 	AndEqual      = "&="
 	Arrow         = "<-"
 	Assign        = "="
@@ -27,11 +28,14 @@ const (
 	GuessMarker   = "?"
 	Import        = "import"
 	Minus         = "-"
+	MinusAssign   = "-="
 	NotAndEqual   = "&^="
 	Package       = "package"
 	Plus          = "+"
 	Return        = "return"
 	Slash         = "/"
+	SlashAssign   = "/="
+	StarAssign    = "*="
 	Var           = "var"
 
 	AmpersandId types.Identifier = "&"
@@ -54,7 +58,7 @@ TODO:
 
 for if else break continue select switch case type struct default fallthrough range go defer return goto
 
-+ - / % | ^ << >> &^ && || == != < > ! <= >= += -= *= /= %= &= &^= ++ --
++ - / % | ^ << >> &^ && || == != < > ! <= >= %= &= &^= ++ --
 
 Go keywords excluded:
 

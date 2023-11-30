@@ -19,6 +19,20 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+func addAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.AddAssign)
+}
+
+func processAugmentedAssign(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	targetCode := extractAssignTarget(env, arg0)
+	if !ok || targetCode == nil {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: targetCode.Op(op).Add(compileToCode(env, arg1))}
+}
+
 func additionForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processUnaryOrBinaryOperator(env, itArgs, names.Plus)
 }
@@ -83,6 +97,10 @@ func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) typ
 	return processUnaryOrBinaryOperator(env, itArgs, string(names.StarId))
 }
 
+func divideAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.SlashAssign)
+}
+
 func divideForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processBinaryOperator(env, itArgs, names.Slash)
 }
@@ -120,6 +138,14 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 		return true
 	})
 	return wrapper{Renderer: slicingCode}
+}
+
+func multiplyAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.StarAssign)
+}
+
+func substractAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.MinusAssign)
 }
 
 func substractionForm(env types.Environment, itArgs types.Iterator) types.Object {
