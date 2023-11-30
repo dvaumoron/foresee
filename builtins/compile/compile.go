@@ -43,8 +43,11 @@ func initBuitins() types.BaseEnvironment {
 	base := types.MakeBaseEnvironment()
 	base.StoreStr(names.AddAssign, types.MakeNativeAppliable(addAssignForm))
 	base.StoreStr(string(names.AmpersandId), types.MakeNativeAppliable(addressOrBitwiseAndForm))
+	base.StoreStr(names.AndNot, types.MakeNativeAppliable(bitwiseAndNotForm))
+	base.StoreStr(names.AndNotAssign, types.MakeNativeAppliable(bitwiseAndNotAssignForm))
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
+	base.StoreStr(names.Caret, types.MakeNativeAppliable(bitwiseXOrForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
 	base.StoreStr(names.DeclareAssign, types.MakeNativeAppliable(declareAssignForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
@@ -61,6 +64,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.StarAssign, types.MakeNativeAppliable(multiplyAssignForm))
 	base.StoreStr(string(names.StarId), types.MakeNativeAppliable(dereferenceOrMultiplyForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
+	base.StoreStr(names.XorAssign, types.MakeNativeAppliable(bitwiseXOrAssignForm))
 
 	// TODO
 	return base

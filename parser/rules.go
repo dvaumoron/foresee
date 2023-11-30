@@ -207,7 +207,7 @@ func parseEllipsis(word string) (types.Object, bool) {
 
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
-	if word[0] != '&' || len(word) == 1 || word == names.AndEqual || word == names.NotAndEqual {
+	if word[0] != '&' || len(word) == 1 || word == names.AndAssign || word == names.NotAndAssign {
 		return nil, false
 	}
 	nodeList := types.NewList(names.AmpersandId)

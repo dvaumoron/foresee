@@ -68,6 +68,26 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAssign(env, itArgs, names.Assign)
 }
 
+func bitwiseAndAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.AndAssign)
+}
+
+func bitwiseAndNotAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.AndNotAssign)
+}
+
+func bitwiseAndNotForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryOperator(env, itArgs, names.AndNot)
+}
+
+func bitwiseXOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processAugmentedAssign(env, itArgs, names.XorAssign)
+}
+
+func bitwiseXOrForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryOperator(env, itArgs, names.Caret)
+}
+
 func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAssign(env, itArgs, names.DeclareAssign)
 }
