@@ -19,6 +19,7 @@ const (
 	HiddenModule = "#module"
 
 	AddAssign     = "+="
+	And           = "&&"
 	AndAssign     = "&="
 	AndNot        = "&^"
 	AndNotAssign  = "&^="
@@ -29,12 +30,15 @@ const (
 	Const         = "const"
 	DeclareAssign = ":="
 	DivAssign     = "/="
+	Equal         = "=="
 	GuessMarker   = "?"
 	Import        = "import"
 	Minus         = "-"
 	ModAssign     = "%="
 	MultAssign    = "*="
 	NotAndAssign  = "&^="
+	NotEqual      = "!="
+	Or            = "||"
 	OrAssign      = "|="
 	Package       = "package"
 	Percent       = "%"
@@ -66,7 +70,7 @@ TODO:
 
 for if else break continue select switch case type struct default fallthrough range go defer return goto
 
-+ - / % | ^ << >> &^ && || == != < > ! <= >= %= &= &^= ++ --
+	<< >> < > ! <= >=  <<= >>= ++ --
 
 Go keywords excluded:
 

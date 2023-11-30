@@ -30,6 +30,10 @@ func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types
 	return processUnaryOrBinaryOperator(env, itArgs, string(names.AmpersandId))
 }
 
+func andForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryMoreOperator(env, itArgs, names.And)
+}
+
 func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAssign(env, itArgs, names.Assign)
 }
@@ -43,7 +47,7 @@ func bitwiseAndNotAssignForm(env types.Environment, itArgs types.Iterator) types
 }
 
 func bitwiseAndNotForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processBinaryOperator(env, itArgs, names.AndNot)
+	return processBinaryMoreOperator(env, itArgs, names.AndNot)
 }
 
 func bitwiseOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -51,7 +55,7 @@ func bitwiseOrAssignForm(env types.Environment, itArgs types.Iterator) types.Obj
 }
 
 func bitwiseOrForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processBinaryOperator(env, itArgs, names.Pipe)
+	return processBinaryMoreOperator(env, itArgs, names.Pipe)
 }
 
 func bitwiseXOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -59,7 +63,7 @@ func bitwiseXOrAssignForm(env types.Environment, itArgs types.Iterator) types.Ob
 }
 
 func bitwiseXOrForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processBinaryOperator(env, itArgs, names.Caret)
+	return processBinaryMoreOperator(env, itArgs, names.Caret)
 }
 
 func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -75,7 +79,11 @@ func divideAssignForm(env types.Environment, itArgs types.Iterator) types.Object
 }
 
 func divideForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processBinaryOperator(env, itArgs, names.Slash)
+	return processBinaryMoreOperator(env, itArgs, names.Slash)
+}
+
+func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryOperator(env, itArgs, names.Equal)
 }
 
 func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -100,11 +108,19 @@ func moduloAssignForm(env types.Environment, itArgs types.Iterator) types.Object
 }
 
 func moduloForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processBinaryOperator(env, itArgs, names.Percent)
+	return processBinaryMoreOperator(env, itArgs, names.Percent)
 }
 
 func multiplyAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAugmentedAssign(env, itArgs, names.MultAssign, string(names.StarId))
+}
+
+func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryOperator(env, itArgs, names.NotEqual)
+}
+
+func orForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryMoreOperator(env, itArgs, names.Or)
 }
 
 func substractAssignForm(env types.Environment, itArgs types.Iterator) types.Object {

@@ -55,12 +55,8 @@ func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssi
 	return wrapper{Renderer: targetCode}
 }
 
-func processBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
-	arg0, ok := itArgs.Next()
-	if !ok {
-		return wrappedErrorComment
-	}
-
+func processBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -71,6 +67,15 @@ func processBinaryOperator(env types.Environment, itArgs types.Iterator, op stri
 		binaryCode.Op(op).Add(code)
 	}
 	return wrapper{Renderer: binaryCode}
+}
+
+func processBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))}
 }
 
 func processUnaryOrBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
