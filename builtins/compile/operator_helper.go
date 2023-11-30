@@ -39,14 +39,20 @@ func processAssign(env types.Environment, itArgs types.Iterator, op string) type
 	return wrappedErrorComment
 }
 
-func processAugmentedAssign(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssign string, op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	targetCode := extractAssignTarget(env, arg0)
 	if !ok || targetCode == nil {
 		return wrappedErrorComment
 	}
-	return wrapper{Renderer: targetCode.Op(op).Add(compileToCode(env, arg1))}
+
+	targetCode.Op(opAssign).Add(compileToCode(env, arg1))
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		targetCode.Op(op).Add(compileToCode(env, elem))
+		return true
+	})
+	return wrapper{Renderer: targetCode}
 }
 
 func processBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
