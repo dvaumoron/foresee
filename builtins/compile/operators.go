@@ -26,19 +26,17 @@ func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types
 	}
 
 	valueCodesTemp := compileToCodeSlice(env, itArgs)
-
 	if len(valueCodesTemp) == 0 {
+		adressable := Renderer(extractType(arg0))
+		if adressable == nil {
+			adressable = compileToCode(env, arg0)
+		}
 		// adressing, usable to build a literal
-		// TODO manage a[b]
-		return literalWrapper{Renderer: jen.Op(string(names.AmpersandId)).Add(extractType(arg0))}
+		return literalWrapper{Renderer: jen.Op(string(names.AmpersandId)).Add(adressable)}
 	}
 
-	andCode, ok := extractCode(arg0.Eval(env)).(*jen.Statement)
-	if !ok {
-		return wrappedErrorComment
-	}
-
-	for _, code := range compileToCodeSlice(env, itArgs) {
+	andCode := compileToCode(env, arg0)
+	for _, code := range valueCodesTemp {
 		andCode.Op(string(names.AmpersandId)).Add(code)
 	}
 	return wrapper{Renderer: andCode}

@@ -60,26 +60,31 @@ func initBuitins() types.BaseEnvironment {
 func compileToCodeSlice(env types.Environment, instructions types.Iterable) []jen.Code {
 	var codes []jen.Code
 	types.ForEach(instructions, func(instruction types.Object) bool {
-		codes = append(codes, extractCode(instruction.Eval(env)))
+		codes = append(codes, compileToCode(env, instruction))
 		return true
 	})
 	return codes
 }
 
-func compileToCode(env types.Environment, instructions types.Iterator) (jen.Code, bool) {
-	instruction, ok := instructions.Next()
-	return extractCode(instruction.Eval(env)), ok
+func compileToCode(env types.Environment, object types.Object) Renderer {
+	return compileBasicType(object, func(object types.Object) Renderer {
+		switch casted := object.Eval(env).(type) {
+		case appliableWrapper:
+			return casted.Renderer
+		case literalWrapper:
+			return casted.Renderer
+		case wrapper:
+			return casted.Renderer
+		default:
+			return compileBasicType(casted, emptyCode)
+		}
+	})
 }
 
-// manage wrapper and literals
-func extractCode(object types.Object) Renderer {
+func compileBasicType(object types.Object, defaultCase func(types.Object) Renderer) Renderer {
 	switch casted := object.(type) {
-	case appliableWrapper:
-		return casted.Renderer
-	case literalWrapper:
-		return casted.Renderer
-	case wrapper:
-		return casted.Renderer
+	case types.NoneType:
+		return jen.Empty()
 	case types.Boolean:
 		return jen.Lit(bool(casted))
 	case types.Integer:
@@ -96,6 +101,10 @@ func extractCode(object types.Object) Renderer {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	}
+	return defaultCase(object)
+}
+
+func emptyCode(object types.Object) Renderer {
 	return jen.Empty()
 }
 
@@ -143,8 +152,10 @@ func extractType(object types.Object) *jen.Statement {
 				case types.Integer:
 					return jen.Index(jen.Lit(int(castedSize))).Add(extractType(casted.LoadInt(2)))
 				case types.Identifier:
-					// size should be ...
-					return jen.Index(jen.Op(string(castedSize))).Add(extractType(casted.LoadInt(2)))
+					// size should be "..." (or it's not a type representation and that should be handled elsewhere)
+					if castedSize == names.EllipsisId {
+						return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(casted.LoadInt(2)))
+					}
 				}
 			case names.MapId:
 				// manage map[t1]t2
@@ -215,7 +226,7 @@ func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.S
 			castedId, _ := id.(types.Identifier)
 			code := jen.Id(string(castedId))
 			types.ForEach(it, func(elem types.Object) bool {
-				code.Index(extractCode(elem.Eval(env)))
+				code.Index(compileToCode(env, elem))
 				return true
 			})
 			return code

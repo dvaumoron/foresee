@@ -35,12 +35,12 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		// detect "K name value"
-		value, ok := compileToCode(env, itArgs)
+		arg1, ok := itArgs.Next()
 		if !ok {
 			// no declared type and no value
 			return wrappedErrorComment
 		}
-		return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(value)}
+		return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(compileToCode(env, arg1))}
 	case *types.List:
 		switch casted2 := casted.LoadInt(0).(type) {
 		case types.Identifier:
@@ -51,16 +51,16 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 				if typeId := extractType(casted.LoadInt(2)); typeId != nil {
 					defCode.Add(typeId)
 				}
-				value, ok := compileToCode(env, itArgs)
+				arg1, ok := itArgs.Next()
 				if ok {
-					defCode.Op(names.Assign).Add(value)
+					defCode.Op(names.Assign).Add(compileToCode(env, arg1))
 				}
 				return wrapper{Renderer: defCode}
 			}
 
 			if casted.Size() > 1 {
 				// "K (name value)"
-				valueCode := extractCode(casted.LoadInt(1).Eval(env))
+				valueCode := compileToCode(env, casted.LoadInt(1))
 				defCodes := []jen.Code{jen.Id(string(casted2)).Op(names.Assign).Add(valueCode)}
 
 				// following lines
@@ -72,7 +72,7 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 			// "K (name:type value)"
 			constId, _ := casted2.LoadInt(1).(types.Identifier)
 			typeCode := extractType(casted2.LoadInt(2))
-			valueCode := extractCode(casted.LoadInt(1).Eval(env))
+			valueCode := compileToCode(env, casted.LoadInt(1))
 			defCodes := []jen.Code{jen.Id(string(constId)).Add(typeCode).Op(names.Assign).Add(valueCode)}
 
 			// following lines
@@ -97,7 +97,7 @@ func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []je
 			defCode = jen.Id(string(constId)).Add(extractType(casted.LoadInt(2)))
 		}
 		if defDesc.Size() > 1 {
-			defCode.Op(names.Assign).Add(extractCode(defDesc.LoadInt(1).Eval(env)))
+			defCode.Op(names.Assign).Add(compileToCode(env, defDesc.LoadInt(1)))
 		}
 		defCodes = append(defCodes, defCode)
 		return true
@@ -190,7 +190,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 		} else {
 			if typeCode := extractType(argN); typeCode == nil {
 				// can not extract type, so argN is the first instruction of the code block
-				codes = []jen.Code{extractCode(argN.Eval(env))}
+				codes = []jen.Code{compileToCode(env, argN)}
 			} else {
 				funcCode.Add(typeCode)
 			}

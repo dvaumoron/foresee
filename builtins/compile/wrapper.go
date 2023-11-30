@@ -28,6 +28,7 @@ var (
 type Renderer interface {
 	types.Renderer
 	jen.Code
+	Op(string) *jen.Statement
 }
 
 // Augment jen types with Eval in order to match types.Object
@@ -82,16 +83,16 @@ func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.
 			// detect Field:value (could be a classic function/operator call)
 			if header == names.ListId {
 				fieldId, _ := casted.LoadInt(1).(types.Identifier)
-				dict := jen.Dict{jen.Id(string(fieldId)): extractCode(casted.LoadInt(2).Eval(env))}
+				dict := jen.Dict{jen.Id(string(fieldId)): compileToCode(env, casted.LoadInt(2))}
 				types.ForEach(itArgs, func(elem types.Object) bool {
 					fieldDesc, _ := elem.(*types.List)
 					fieldId, _ := fieldDesc.LoadInt(1).(types.Identifier)
-					dict[jen.Id(string(fieldId))] = extractCode(fieldDesc.LoadInt(2).Eval(env))
+					dict[jen.Id(string(fieldId))] = compileToCode(env, fieldDesc.LoadInt(2))
 					return true
 				})
 				argsCode = []jen.Code{dict}
 			} else {
-				argsCode = []jen.Code{extractCode(arg0.Eval(env))}
+				argsCode = []jen.Code{compileToCode(env, arg0)}
 				argsCodeTemp := compileToCodeSlice(env, itArgs)
 				argsCode = append(argsCode, argsCodeTemp...)
 			}
