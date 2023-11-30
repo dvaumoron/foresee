@@ -19,7 +19,15 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+func additionForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processUnaryOrBinaryOperator(env, itArgs, names.Plus)
+}
+
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processUnaryOrBinaryOperator(env, itArgs, string(names.AmpersandId))
+}
+
+func processUnaryOrBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -27,19 +35,19 @@ func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types
 
 	valueCodesTemp := compileToCodeSlice(env, itArgs)
 	if len(valueCodesTemp) == 0 {
-		adressable := Renderer(extractType(arg0))
-		if adressable == nil {
-			adressable = compileToCode(env, arg0)
+		targetCode := Renderer(extractType(arg0))
+		if targetCode == nil {
+			targetCode = compileToCode(env, arg0)
 		}
 		// adressing, usable to build a literal
-		return literalWrapper{Renderer: jen.Op(string(names.AmpersandId)).Add(adressable)}
+		return literalWrapper{Renderer: jen.Op(op).Add(targetCode)}
 	}
 
-	andCode := compileToCode(env, arg0)
+	binaryCode := compileToCode(env, arg0)
 	for _, code := range valueCodesTemp {
-		andCode.Op(string(names.AmpersandId)).Add(code)
+		binaryCode.Op(op).Add(code)
 	}
-	return wrapper{Renderer: andCode}
+	return wrapper{Renderer: binaryCode}
 }
 
 func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -69,4 +77,51 @@ func processAssign(env types.Environment, itArgs types.Iterator, op string) type
 		return wrapper{Renderer: jen.List(ids...).Op(op).List(values...)}
 	}
 	return wrappedErrorComment
+}
+
+func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processUnaryOrBinaryOperator(env, itArgs, string(names.StarId))
+}
+
+func divideForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processBinaryOperator(env, itArgs, names.Slash)
+}
+
+func processBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	binaryCode := compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))
+	for _, code := range compileToCodeSlice(env, itArgs) {
+		binaryCode.Op(op).Add(code)
+	}
+	return wrapper{Renderer: binaryCode}
+}
+
+func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	slice0 := extractSliceIndexes(env, arg1)
+	slicingCode := compileToCode(env, arg0).Index(slice0...)
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		sliceN := extractSliceIndexes(env, elem)
+		slicingCode.Index(sliceN...)
+		return true
+	})
+	return wrapper{Renderer: slicingCode}
+}
+
+func substractionForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processUnaryOrBinaryOperator(env, itArgs, names.Minus)
 }

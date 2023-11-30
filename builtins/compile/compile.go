@@ -49,18 +49,23 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
 	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm)) // TODO lambda keyword to manage closure case
 	base.StoreStr(names.Import, types.MakeNativeAppliable(importForm))
+	base.StoreStr(string(names.LoadId), types.MakeNativeAppliable(indexOrSliceForm))
+	base.StoreStr(names.Minus, types.MakeNativeAppliable(substractionForm))
 	base.StoreStr(names.Package, types.MakeNativeAppliable(packageForm))
+	base.StoreStr(names.Plus, types.MakeNativeAppliable(additionForm))
 	base.StoreStr(names.Return, types.MakeNativeAppliable(returnForm))
+	base.StoreStr(names.Slash, types.MakeNativeAppliable(divideForm))
+	base.StoreStr(string(names.StarId), types.MakeNativeAppliable(dereferenceOrMultiplyForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 
 	// TODO
 	return base
 }
 
-func compileToCodeSlice(env types.Environment, instructions types.Iterable) []jen.Code {
+func compileToCodeSlice(env types.Environment, iterable types.Iterable) []jen.Code {
 	var codes []jen.Code
-	types.ForEach(instructions, func(instruction types.Object) bool {
-		codes = append(codes, compileToCode(env, instruction))
+	types.ForEach(iterable, func(elem types.Object) bool {
+		codes = append(codes, compileToCode(env, elem))
 		return true
 	})
 	return codes
@@ -106,6 +111,19 @@ func compileBasicType(object types.Object, defaultCase func(types.Object) Render
 
 func emptyCode(object types.Object) Renderer {
 	return jen.Empty()
+}
+
+func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code {
+	casted, _ := object.(*types.List)
+	itCasted := casted.Iter()
+	defer itCasted.Close()
+
+	arg0, _ := itCasted.Next()
+	// detect slice (could be a classic function/operator call)
+	if header, _ := arg0.(types.Identifier); header == names.ListId {
+		return compileToCodeSlice(env, itCasted)
+	}
+	return []jen.Code{compileToCode(env, object)}
 }
 
 // handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
@@ -206,7 +224,7 @@ func extractType(object types.Object) *jen.Statement {
 	return nil
 }
 
-// handle (* a) as *a and ([] a b c) as a[b][c]
+// handle "a" as a,  "(* a)" as *a and ([] a b c) as a[b][c]
 func extractAssignTarget(env types.Environment, object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
@@ -221,12 +239,19 @@ func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.S
 	if list.Size() > 1 {
 		switch op, _ := list.LoadInt(0).(types.Identifier); op {
 		case names.LoadId:
-			it := list.Iter()
+			it := list.Iter() // no need to close (done in ForEach)
+			it.Next()         // skip LoadId
+
 			id, _ := it.Next()
+			index, ok := it.Next()
+			if !ok {
+				return nil
+			}
+
 			castedId, _ := id.(types.Identifier)
-			code := jen.Id(string(castedId))
+			code := jen.Id(string(castedId)).Index(compileToCode(env, index)) // can not be slicing
 			types.ForEach(it, func(elem types.Object) bool {
-				code.Index(compileToCode(env, elem))
+				code.Index(compileToCode(env, elem)) // can not be slicing
 				return true
 			})
 			return code

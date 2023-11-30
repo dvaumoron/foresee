@@ -26,9 +26,12 @@ const (
 	DeclareAssign = ":="
 	GuessMarker   = "?"
 	Import        = "import"
+	Minus         = "-"
 	NotAndEqual   = "&^="
 	Package       = "package"
+	Plus          = "+"
 	Return        = "return"
+	Slash         = "/"
 	Var           = "var"
 
 	AmpersandId types.Identifier = "&"
@@ -51,7 +54,7 @@ TODO:
 
 for if else break continue select switch case type struct default fallthrough range go defer return goto
 
-+ - * / % | ^ << >> &^ && || == != < > ! <= >= += -= *= /= %= &= &^= ++ --
++ - / % | ^ << >> &^ && || == != < > ! <= >= += -= *= /= %= &= &^= ++ --
 
 Go keywords excluded:
 

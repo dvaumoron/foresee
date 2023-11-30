@@ -174,7 +174,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	})
 	funcCode.Params(paramCodes...)
 
-	var codes []jen.Code
+	var instructionCodes []jen.Code
 	argN, _ = itArgs.Next()
 	switch casted3 := argN.(type) {
 	case types.Identifier:
@@ -190,15 +190,16 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 		} else {
 			if typeCode := extractType(argN); typeCode == nil {
 				// can not extract type, so argN is the first instruction of the code block
-				codes = []jen.Code{compileToCode(env, argN)}
+				instructionCodes = []jen.Code{compileToCode(env, argN)}
 			} else {
 				funcCode.Add(typeCode)
 			}
 		}
 	}
 
-	codes = append(codes, compileToCodeSlice(env, itArgs)...)
-	return wrapper{Renderer: funcCode.Block(codes...)}
+	instructionCodesTemp := compileToCodeSlice(env, itArgs)
+	instructionCodes = append(instructionCodes, instructionCodesTemp...)
+	return wrapper{Renderer: funcCode.Block(instructionCodes...)}
 }
 
 func importForm(env types.Environment, itArgs types.Iterator) types.Object {
