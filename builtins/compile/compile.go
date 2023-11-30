@@ -43,6 +43,7 @@ func initBuitins() types.BaseEnvironment {
 	base := types.MakeBaseEnvironment()
 	base.StoreStr(names.AddAssign, types.MakeNativeAppliable(addAssignForm))
 	base.StoreStr(string(names.AmpersandId), types.MakeNativeAppliable(addressOrBitwiseAndForm))
+	base.StoreStr(names.AndAssign, types.MakeNativeAppliable(bitwiseAndAssignForm))
 	base.StoreStr(names.AndNot, types.MakeNativeAppliable(bitwiseAndNotForm))
 	base.StoreStr(names.AndNotAssign, types.MakeNativeAppliable(bitwiseAndNotAssignForm))
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
