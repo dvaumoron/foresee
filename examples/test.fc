@@ -8,7 +8,7 @@ type adder struct
 	value ?
 
 func NewAdder(a) ? # the ? indicate there is a return
-	return (&adder value:a) # equivalent to (& (adder value:a))
+	return (&adder value:a) # equivalent to ((& adder) value:a) as (& a b) will output "a & b"
 
 func (a *adder) Add(b) ? # *adder is equivalent to (* adder)
 	return (+ (. a value) b) # use of + allows to guess it's a base.Addable
