@@ -29,17 +29,22 @@ const (
 	Caret         = "^"
 	Const         = "const"
 	DeclareAssign = ":="
+	Decrement     = "--"
 	DivAssign     = "/="
 	Equal         = "=="
 	Greater       = "<"
 	GreaterEqual  = "<="
 	GuessMarker   = "?"
 	Import        = "import"
+	Increment     = "++"
 	Lesser        = ">"
 	LesserEqual   = ">="
+	LShift        = ">>"
+	LShiftAssign  = ">>="
 	Minus         = "-"
 	ModAssign     = "%="
 	MultAssign    = "*="
+	Not           = "!"
 	NotAndAssign  = "&^="
 	NotEqual      = "!="
 	Or            = "||"
@@ -49,6 +54,8 @@ const (
 	Pipe          = "|"
 	Plus          = "+"
 	Return        = "return"
+	RShift        = ">>"
+	RShiftAssign  = ">>="
 	Slash         = "/"
 	SubAssign     = "-="
 	Var           = "var"
@@ -73,8 +80,6 @@ const (
 TODO:
 
 for if else break continue select switch case type struct default fallthrough range go defer return goto
-
-	<< >> < > ! <<= >>= ++ --
 
 Go keywords excluded:
 

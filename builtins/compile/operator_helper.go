@@ -40,7 +40,17 @@ func processAssign(env types.Environment, itArgs types.Iterator, op string) type
 	return wrappedErrorComment
 }
 
-func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssign string, op string) types.Object {
+func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssign string) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	targetCode := extractAssignTarget(env, arg0)
+	if !ok || targetCode == nil {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: targetCode.Op(opAssign).Add(compileToCode(env, arg1))}
+}
+
+func processAugmentedAssignMore(env types.Environment, itArgs types.Iterator, opAssign string, op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	targetCode := extractAssignTarget(env, arg0)
@@ -94,6 +104,14 @@ func processComparison(env types.Environment, itArgs types.Iterator, op string) 
 	}
 	return wrapper{Renderer: binaryCode}
 
+}
+
+func processUnaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: jen.Op(op).Add(compileToCode(env, arg0))}
 }
 
 func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
