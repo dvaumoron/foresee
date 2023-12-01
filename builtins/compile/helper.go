@@ -33,7 +33,7 @@ func compileToCodeSlice(env types.Environment, iterable types.Iterable) []jen.Co
 func compileToCode(env types.Environment, object types.Object) Renderer {
 	return handleBasicType(object, true, func(object types.Object) Renderer {
 		switch casted := object.Eval(env).(type) {
-		case appliableWrapper:
+		case callableWrapper:
 			return casted.Renderer
 		case literalWrapper:
 			return casted.Renderer

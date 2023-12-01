@@ -14,6 +14,7 @@
 package compile
 
 import (
+	"github.com/dave/jennifer/jen"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
@@ -23,11 +24,11 @@ func addAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func additionForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryOperator(env, itArgs, names.Plus)
+	return processUnaryOrBinaryMoreOperator(env, itArgs, names.Plus)
 }
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryOperator(env, itArgs, string(names.AmpersandId))
+	return processUnaryOrBinaryMoreOperator(env, itArgs, string(names.AmpersandId))
 }
 
 func andForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -71,7 +72,7 @@ func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Objec
 }
 
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryOperator(env, itArgs, string(names.StarId))
+	return processUnaryOrBinaryMoreOperator(env, itArgs, string(names.StarId))
 }
 
 func divideAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -123,10 +124,29 @@ func orForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Or)
 }
 
+func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	arg1, ok := itArgs.Next()
+	if ok {
+		return wrapper{Renderer: compileToCode(env, arg0).Op(names.Arrow).Add(compileToCode(env, arg1))}
+	}
+
+	targetCode := Renderer(extractType(arg0))
+	if targetCode == nil {
+		targetCode = compileToCode(env, arg0)
+	}
+	// returned value could be callable when receiving from channel
+	return callableWrapper{Renderer: jen.Op(names.Arrow).Add(targetCode)}
+}
+
 func substractAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAugmentedAssign(env, itArgs, names.SubAssign, names.Minus)
 }
 
 func substractionForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryOperator(env, itArgs, names.Minus)
+	return processUnaryOrBinaryMoreOperator(env, itArgs, names.Minus)
 }

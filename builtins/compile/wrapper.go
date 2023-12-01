@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	_ types.Appliable = appliableWrapper{}
+	_ types.Appliable = callableWrapper{}
 	_ types.Appliable = literalWrapper{}
 )
 
@@ -43,20 +43,20 @@ func (w wrapper) Eval(types.Environment) types.Object {
 
 // Augment jen types with Eval in order to match types.Object
 // and an Apply which create a function call
-type appliableWrapper struct {
+type callableWrapper struct {
 	// not composing wrapper to avoid a type changement on eval
 	Renderer
 }
 
-func (w appliableWrapper) Eval(types.Environment) types.Object {
+func (w callableWrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
-func (w appliableWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
+func (w callableWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
 	if casted, ok := w.Renderer.(*jen.Statement); ok {
 		argsCode := compileToCodeSlice(env, args)
 		// still appliable ("f(a)(b)" is possible)
-		return appliableWrapper{Renderer: casted.Clone().Call(argsCode...)}
+		return callableWrapper{Renderer: casted.Clone().Call(argsCode...)}
 	}
 	return w
 }
@@ -112,7 +112,7 @@ type compileEnvironment struct {
 func (c compileEnvironment) LoadStr(key string) (types.Object, bool) {
 	res, ok := c.Environment.LoadStr(key)
 	if !ok {
-		res = appliableWrapper{Renderer: jen.Id(key)}
+		res = callableWrapper{Renderer: jen.Id(key)}
 	}
 	return res, true
 }

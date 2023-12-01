@@ -78,7 +78,7 @@ func processBinaryOperator(env types.Environment, itArgs types.Iterator, op stri
 	return wrapper{Renderer: compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))}
 }
 
-func processUnaryOrBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -90,7 +90,7 @@ func processUnaryOrBinaryOperator(env types.Environment, itArgs types.Iterator, 
 		if targetCode == nil {
 			targetCode = compileToCode(env, arg0)
 		}
-		// adressing, usable to build a literal
+		// usable to build a literal when adressing
 		return literalWrapper{Renderer: jen.Op(op).Add(targetCode)}
 	}
 
