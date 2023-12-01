@@ -67,24 +67,20 @@ LineLoop:
 				if !unicode.IsSpace(char) {
 					if top := indentStack.peek(); top < index {
 						indentStack.push(index)
-						manageOpen(listStack)
-					} else if top == index {
-						listStack.pop()
-						manageOpen(listStack)
 					} else {
-						indentStack.pop()
 						listStack.pop()
-						for top = indentStack.peek(); top > index; top = indentStack.peek() {
-							indentStack.pop()
+						if top != index {
+							for top = indentStack.pop(); top > index; top = indentStack.pop() {
+								listStack.pop()
+							}
+							if top < index {
+								err = errIndent
+								break LineLoop
+							}
 							listStack.pop()
 						}
-						if top < index {
-							err = errIndent
-							break LineLoop
-						}
-						listStack.pop()
-						manageOpen(listStack)
 					}
+					manageOpen(listStack)
 					break
 				}
 			}
