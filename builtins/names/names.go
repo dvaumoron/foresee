@@ -31,8 +31,12 @@ const (
 	DeclareAssign = ":="
 	DivAssign     = "/="
 	Equal         = "=="
+	Greater       = "<"
+	GreaterEqual  = "<="
 	GuessMarker   = "?"
 	Import        = "import"
+	Lesser        = ">"
+	LesserEqual   = ">="
 	Minus         = "-"
 	ModAssign     = "%="
 	MultAssign    = "*="
@@ -70,7 +74,7 @@ TODO:
 
 for if else break continue select switch case type struct default fallthrough range go defer return goto
 
-	<< >> < > ! <= >=  <<= >>= ++ --
+	<< >> < > ! <<= >>= ++ --
 
 Go keywords excluded:
 

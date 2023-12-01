@@ -87,6 +87,14 @@ func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processBinaryOperator(env, itArgs, names.Equal)
 }
 
+func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processComparison(env, itArgs, names.Greater)
+}
+
+func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processComparison(env, itArgs, names.GreaterEqual)
+}
+
 func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
@@ -102,6 +110,14 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 		return true
 	})
 	return wrapper{Renderer: slicingCode}
+}
+
+func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processComparison(env, itArgs, names.Lesser)
+}
+
+func lesserEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return processComparison(env, itArgs, names.LesserEqual)
 }
 
 func moduloAssignForm(env types.Environment, itArgs types.Iterator) types.Object {

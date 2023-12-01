@@ -15,6 +15,7 @@ package compile
 
 import (
 	"github.com/dave/jennifer/jen"
+	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
@@ -76,6 +77,23 @@ func processBinaryOperator(env types.Environment, itArgs types.Iterator, op stri
 		return wrappedErrorComment
 	}
 	return wrapper{Renderer: compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))}
+}
+
+func processComparison(env types.Environment, itArgs types.Iterator, op string) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	argCode := jen.Code(compileToCode(env, arg1))
+	binaryCode := compileToCode(env, arg0).Op(op).Add(argCode)
+	for _, currentCode := range compileToCodeSlice(env, itArgs) {
+		binaryCode.Op(names.And).Add(argCode).Op(op).Add(currentCode)
+		argCode = currentCode
+	}
+	return wrapper{Renderer: binaryCode}
+
 }
 
 func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
