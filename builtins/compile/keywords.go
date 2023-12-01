@@ -141,6 +141,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	funcCode := jen.Func()
+	// TODO manage generic
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		funcCode.Id(string(casted))
