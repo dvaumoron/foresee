@@ -74,21 +74,7 @@ func emptyCode(object types.Object) Renderer {
 	return jen.Empty()
 }
 
-func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code {
-	casted, _ := object.(*types.List)
-	itCasted := casted.Iter()
-	defer itCasted.Close()
-
-	arg0, _ := itCasted.Next()
-	// detect slice (could be a classic function/operator call)
-	if header, _ := arg0.(types.Identifier); header == names.ListId {
-		return compileToCodeSlice(env, itCasted)
-	}
-	return []jen.Code{compileToCode(env, object)}
-}
-
 // handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
-// TODO manage constraint ~type
 // TODO manage anonymous struct ?
 func extractType(object types.Object) *jen.Statement {
 	switch casted := object.(type) {

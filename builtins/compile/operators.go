@@ -67,6 +67,37 @@ func bitwiseXOrForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Caret)
 }
 
+func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, _ := itArgs.Next()
+	methodName := ""
+	var typeCodes []jen.Code
+	switch casted := arg1.(type) {
+	case types.Identifier:
+		methodName = string(casted)
+	case *types.List:
+		op, _ := casted.LoadInt(0).(types.Identifier)
+		if genTypes, ok := casted.LoadInt(2).(types.Iterable); op == names.LoadId && ok {
+			// type with generic parameter
+			methodId, _ := casted.LoadInt(1).(types.Identifier)
+			methodName = string(methodId)
+			typeCodes = extractTypes(genTypes)
+		}
+	}
+
+	if methodName == "" {
+		return wrappedErrorComment
+	}
+
+	callCode := compileToCode(env, arg0).Dot(methodName)
+	if typeCodes != nil {
+		callCode.Types(typeCodes...)
+	}
+	argsCode := compileToCodeSlice(env, itArgs)
+	// returned value could be callable
+	return callableWrapper{Renderer: callCode.Call(argsCode...)}
+}
+
 func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAssign(env, itArgs, names.DeclareAssign)
 }
@@ -89,6 +120,14 @@ func divideForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processBinaryOperator(env, itArgs, names.Equal)
+}
+
+func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: compileToCode(env, arg0).Op(string(names.EllipsisId))}
 }
 
 func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {

@@ -19,6 +19,19 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code {
+	casted, _ := object.(*types.List)
+	itCasted := casted.Iter()
+	defer itCasted.Close()
+
+	arg0, _ := itCasted.Next()
+	// detect slice (could be a classic function/operator call)
+	if header, _ := arg0.(types.Identifier); header == names.ListId {
+		return compileToCodeSlice(env, itCasted)
+	}
+	return []jen.Code{compileToCode(env, object)}
+}
+
 func processAssign(env types.Environment, itArgs types.Iterator, op string) types.Object {
 	arg0, _ := itArgs.Next()
 	values := compileToCodeSlice(env, itArgs)

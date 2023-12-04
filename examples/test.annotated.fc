@@ -30,7 +30,7 @@ func (a adderInt) Add(b) int
 func Addition[T0:any,T1:any] (a:guessed0[T0,T1]  b:T0) T1
 	return (. a Add b)
 
-func UseAdder() # no ? (there is no return)
+func UseAdder() # no return
 	var a:float64
 	= a 1
     var b:float64 2

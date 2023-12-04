@@ -53,6 +53,8 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.DeclareAssign, types.MakeNativeAppliable(declareAssignForm))
 	base.StoreStr(names.Decrement, types.MakeNativeAppliable(decrementForm))
 	base.StoreStr(names.DivAssign, types.MakeNativeAppliable(divideAssignForm))
+	base.StoreStr(names.Dot, types.MakeNativeAppliable(callMethodForm))
+	base.StoreStr(string(names.EllipsisId), types.MakeNativeAppliable(extendSliceForm))
 	base.StoreStr(names.Equal, types.MakeNativeAppliable(equalForm))
 	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
 	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm)) // TODO lambda keyword to manage closure case

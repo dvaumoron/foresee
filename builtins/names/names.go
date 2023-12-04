@@ -31,6 +31,7 @@ const (
 	DeclareAssign = ":="
 	Decrement     = "--"
 	DivAssign     = "/="
+	Dot           = "."
 	Equal         = "=="
 	Greater       = "<"
 	GreaterEqual  = "<="
