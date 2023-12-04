@@ -17,5 +17,5 @@ import "github.com/dvaumoron/foresee/types"
 
 func ExpandMacro(l *types.List) (*types.List, error) {
 	// TODO
-	return nil, nil
+	return l, nil
 }
