@@ -88,6 +88,7 @@ func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code 
 }
 
 // handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
+// TODO manage constraint ~type
 // TODO manage anonymous struct ?
 func extractType(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
@@ -219,6 +220,38 @@ func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.S
 	case names.StarId:
 		if list.Size() > 1 {
 			return jen.Op(string(op)).Add(extractAssignTarget(env, list.LoadInt(1)))
+		}
+	}
+	return nil
+}
+
+func extractNameWithGeneric(object types.Object) *jen.Statement {
+	switch casted := object.(type) {
+	case types.Identifier:
+		return jen.Id(string(casted))
+	case *types.List:
+		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.LoadId {
+			itCasted := casted.Iter()
+			defer itCasted.Close()
+
+			itCasted.Next() // skip LoadId
+
+			name, _ := itCasted.Next()
+			nameId, ok := name.(types.Identifier)
+			if !ok {
+				return nil
+			}
+
+			nameCode := jen.Id(string(nameId))
+			var genericCodes []jen.Code
+			types.ForEach(itCasted, func(elem types.Object) bool {
+				// assume it's in "name:type" format
+				genDesc, _ := elem.(*types.List)
+				genId, _ := genDesc.LoadInt(1).(types.Identifier)
+				genericCodes = append(genericCodes, jen.Id(string(genId)).Add(extractType(genDesc.LoadInt(2))))
+				return true
+			})
+			return nameCode.Types(genericCodes...)
 		}
 	}
 	return nil

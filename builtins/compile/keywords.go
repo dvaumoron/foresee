@@ -141,22 +141,25 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	funcCode := jen.Func()
-	// TODO manage generic
-	switch casted := arg0.(type) {
-	case types.Identifier:
-		funcCode.Id(string(casted))
-	case *types.List:
+	if nameCode := extractNameWithGeneric(arg0); nameCode == nil {
+		casted, ok := arg0.(*types.List)
+		if !ok {
+			return wrappedErrorComment
+		}
+
 		var receiverCode *jen.Statement
-		if castedReceiver, _ := casted.LoadInt(0).(*types.List); castedReceiver.Size() > 1 {
-			receiverId, _ := castedReceiver.LoadInt(0).(types.Identifier)
-			receiverCode = jen.Id(string(receiverId)).Add(extractType(castedReceiver.LoadInt(1)))
+		if casted.Size() > 1 {
+			receiverId, _ := casted.LoadInt(0).(types.Identifier)
+			receiverCode = jen.Id(string(receiverId)).Add(extractType(casted.LoadInt(1)))
 		} else {
-			receiverCode = extractType(castedReceiver.LoadInt(0))
+			receiverCode = extractType(casted.LoadInt(0))
 		}
 
 		arg1, _ := itArgs.Next()
 		methodId, _ := arg1.(types.Identifier)
 		funcCode.Parens(receiverCode).Id(string(methodId))
+	} else {
+		funcCode.Add(nameCode)
 	}
 
 	argN, _ := itArgs.Next()
