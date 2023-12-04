@@ -45,7 +45,7 @@ func (w wrapper) Eval(types.Environment) types.Object {
 // Augment jen types with Eval in order to match types.Object
 // and an Apply which create a function call
 type callableWrapper struct {
-	// not composing wrapper to avoid a type changement on eval
+	// not composing wrapper to avoid a type change on eval
 	Renderer
 }
 
@@ -65,7 +65,7 @@ func (w callableWrapper) Apply(env types.Environment, args types.Iterable) types
 // Augment jen types with Eval in order to match types.Object
 // and an Apply which create a literal
 type literalWrapper struct {
-	// not composing wrapper to avoid a type changement on eval
+	// not composing wrapper to avoid a type change on eval
 	Renderer
 }
 
