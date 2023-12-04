@@ -130,6 +130,7 @@ func parseList(word string) (types.Object, bool) {
 }
 
 // manage melting with string literal
+// however does not work with nested square bracket
 func parseListSep(word string, sep rune) (types.Object, bool) {
 	chars := make(chan rune)
 	go sendChar(chars, word)
