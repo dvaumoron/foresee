@@ -73,6 +73,7 @@ const (
 	MapId       types.Identifier = "map"
 	StarId      types.Identifier = "*"
 	StoreId     types.Identifier = "[]="
+	TildeId     types.Identifier = "~"
 	UnquoteId   types.Identifier = "unquote"
 )
 

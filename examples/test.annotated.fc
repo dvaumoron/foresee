@@ -1,0 +1,43 @@
+package goal
+
+import
+	"fmt"
+
+	"github.com/dvaumoron/foresee/base"
+
+type guessed0[T0:any,T1:any] interface {
+	Add(T0) T1
+}
+
+type ([] adder (list T (. base Addable))) struct
+	value T
+
+func NewAdder(a) *adder
+	return (&adder value:a) # equivalent to ((& adder) value:a) as (& a b) will output "a & b"
+
+func (a *adder[T]) Add(b:T) T # *adder[T] is equivalent to (* ([] adder (list T)))
+	return (+ (. a value) b)
+
+type adderInt struct
+    value int
+
+func MakeAdderInt(a) adderInt
+	return (adderInt value:a)
+
+func (a adderInt) Add(b) int
+    return (+ (. a value) b)
+
+func Addition[T0:any,T1:any] (a:guessed0[T0,T1]  b:T0) T1
+	return (. a Add b)
+
+func UseAdder() # no ? (there is no return)
+	var a:float64
+	= a 1
+    var b:float64 2
+
+	. fmt Println "Result 1 is" (Addition (NewAdder a) b)
+
+	:= (c d) 1 2
+
+	. fmt Println "Result 2 is" (Addition (MakeAdderInt c) d)
+

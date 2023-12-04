@@ -34,12 +34,13 @@ type ConvertString = func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote,
-		// handle "...type", "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
-		// as (... type), (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
+		// handle "...type", "~type", "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
+		// as (... type), (~ type), (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
 		// typeList format is "t1,t2" as (list t1 t2)
-		parseEllipsis, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
-		// handle "<-chan[type]", "chan<-[type]", "chan[type]" "a:b" as (<-chan type), (chan<- type), (chan type), (list a b)
-		parseArrowChanType, parseChanArrowType, parseChanType, parseList,
+		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
+		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "type[typeList]", "a:b"
+		// as (<-chan type), (chan<- type), (chan type), ([] type typeList), (list a b)
+		parseArrowChanType, parseChanArrowType, parseChanType, parseGenericType, parseList,
 	}
 }
 
@@ -205,6 +206,16 @@ func parseEllipsis(word string) (types.Object, bool) {
 	return nodeList, true
 }
 
+func parseTilde(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if word[0] != '~' || len(word) == 1 {
+		return nil, false
+	}
+	nodeList := types.NewList(names.TildeId)
+	nodeList.Add(handleSubWord(word[1:]))
+	return nodeList, true
+}
+
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '&' || len(word) == 1 || word == names.AndAssign || word == names.NotAndAssign {
@@ -324,4 +335,19 @@ func handleTypeList(word string) types.Object {
 
 	nodeList.Add(HandleClassicWord(word))
 	return nodeList
+}
+
+// handle a[b,c] but not a[b][c]
+func parseGenericType(word string) (types.Object, bool) {
+	index := strings.IndexByte(word, '[')
+	lastIndex := len(word) - 1
+	// test len to keep the basic identifier case
+	if index == -1 || lastIndex == 1 || word[lastIndex] != ']' {
+		return nil, false
+	}
+
+	nodeList := types.NewList(names.LoadId)
+	nodeList.Add(handleSubWord(word[:index]))
+	nodeList.Add(handleTypeList(word[index+1 : lastIndex]))
+	return nodeList, true
 }

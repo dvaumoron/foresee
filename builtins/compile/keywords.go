@@ -48,8 +48,8 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 			if casted2 == names.ListId {
 				constId, _ := casted.LoadInt(1).(types.Identifier)
 				defCode := baseCode.Id(string(constId))
-				if typeId := extractType(casted.LoadInt(2)); typeId != nil {
-					defCode.Add(typeId)
+				if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+					defCode.Add(typeCode)
 				}
 				arg1, ok := itArgs.Next()
 				if ok {

@@ -96,6 +96,8 @@ func extractType(object types.Object) *jen.Statement {
 		return jen.Id(string(casted))
 	case *types.List:
 		switch casted.Size() {
+		case 0, 1:
+			return nil
 		case 2:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 			case names.ArrowChanId:
@@ -132,9 +134,17 @@ func extractType(object types.Object) *jen.Statement {
 				case types.Integer:
 					return jen.Index(jen.Lit(int(castedSize))).Add(extractType(casted.LoadInt(2)))
 				case types.Identifier:
-					// size should be "..." (or it's not a type representation and that should be handled elsewhere)
 					if castedSize == names.EllipsisId {
+						// array type with automatic count
 						return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(casted.LoadInt(2)))
+					} else if genTypes, ok := casted.LoadInt(2).(*types.List); ok {
+						// type with generic parameter
+						var typeIds []jen.Code
+						types.ForEach(genTypes, func(elem types.Object) bool {
+							typeIds = append(typeIds, extractType(elem))
+							return true
+						})
+						return jen.Id(string(castedSize)).Types(typeIds...)
 					}
 				}
 			case names.MapId:
@@ -149,19 +159,15 @@ func extractType(object types.Object) *jen.Statement {
 				itType := param.Iter() // no need to close (done in ForEach)
 				itType.Next()          // skip ListId
 
-				var typeIds []jen.Code
-				types.ForEach(itType, func(elem types.Object) bool {
-					typeIds = append(typeIds, extractType(elem))
-					return true
-				})
-				funcCode := jen.Func().Params(typeIds...)
+				typeCodes := extractTypes(itType)
+				funcCode := jen.Func().Params(typeCodes...)
 
 				returns, ok := casted.LoadInt(2).(*types.List)
 				if !ok {
 					return nil
 				}
 
-				itType = returns.Iter() // no need to close (done in ForEach)
+				itType = returns.Iter() // no need to close (done in extractTypes (with ForEach))
 				itType.Next()           // skip ListId
 
 				var outputTypeIds []jen.Code
@@ -181,9 +187,29 @@ func extractType(object types.Object) *jen.Statement {
 					return funcCode.Parens(jen.List(outputTypeIds...))
 				}
 			}
+		default:
+			op, _ := casted.LoadInt(0).(types.Identifier)
+			name, _ := casted.LoadInt(1).(types.Identifier)
+			if genTypes, ok := casted.LoadInt(2).(types.Iterable); op == names.LoadId && ok {
+				itType := genTypes.Iter() // no need to close (done in extractTypes (with ForEach))
+				itType.Next()             // skip ListId
+
+				// type with generic parameter
+				typeCodes := extractTypes(itType)
+				return jen.Id(string(name)).Types(typeCodes...)
+			}
 		}
 	}
 	return nil
+}
+
+func extractTypes(typeIterable types.Iterable) []jen.Code {
+	var typeCodes []jen.Code
+	types.ForEach(typeIterable, func(elem types.Object) bool {
+		typeCodes = append(typeCodes, extractType(elem))
+		return true
+	})
+	return typeCodes
 }
 
 // handle "a" as a,  "(* a)" as *a and ([] a b c) as a[b][c]
@@ -243,15 +269,22 @@ func extractNameWithGeneric(object types.Object) *jen.Statement {
 			}
 
 			nameCode := jen.Id(string(nameId))
+
+			noError := true
 			var genericCodes []jen.Code
 			types.ForEach(itCasted, func(elem types.Object) bool {
+				var genDesc *types.List
 				// assume it's in "name:type" format
-				genDesc, _ := elem.(*types.List)
-				genId, _ := genDesc.LoadInt(1).(types.Identifier)
-				genericCodes = append(genericCodes, jen.Id(string(genId)).Add(extractType(genDesc.LoadInt(2))))
-				return true
+				if genDesc, noError = elem.(*types.List); noError {
+					genId, _ := genDesc.LoadInt(1).(types.Identifier)
+					genericCodes = append(genericCodes, jen.Id(string(genId)).Add(extractType(genDesc.LoadInt(2))))
+				}
+				return noError
 			})
-			return nameCode.Types(genericCodes...)
+
+			if noError {
+				return nameCode.Types(genericCodes...)
+			}
 		}
 	}
 	return nil
