@@ -81,4 +81,4 @@ const (
 	UnquoteId   types.Identifier = "unquote"
 )
 
-// TODO: if else break continue select switch case type struct interface default fallthrough go defer goto
+// TODO: break continue select switch case type struct interface default fallthrough go defer goto

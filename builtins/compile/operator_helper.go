@@ -124,7 +124,7 @@ func processUnaryOperator(env types.Environment, itArgs types.Iterator, op strin
 	if !ok {
 		return wrappedErrorComment
 	}
-	return wrapper{Renderer: jen.Op(op).Add(compileToCode(env, arg0))}
+	return wrapper{Renderer: compileToCode(env, arg0).Op(op)}
 }
 
 func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
