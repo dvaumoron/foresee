@@ -19,7 +19,7 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-func extractNameWithGeneric(object types.Object) *jen.Statement {
+func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
@@ -54,6 +54,31 @@ func extractNameWithGeneric(object types.Object) *jen.Statement {
 				return nameCode.Types(genericCodes...)
 			}
 		}
+	}
+	return nil
+}
+
+func extractSingleOrMultiple(env types.Environment, list *types.List) []jen.Code {
+	switch list.LoadInt(0).(type) {
+	case types.Identifier:
+		return []jen.Code{compileToCode(env, list)}
+	case *types.List:
+		return compileToCodeSlice(env, list)
+	}
+	return nil
+}
+
+func extractValueOrMultiple(env types.Environment, object types.Object) []jen.Code {
+	condCode := handleBasicType(object, true, func(object types.Object) Renderer {
+		return nil
+	})
+	if condCode != nil {
+		return []jen.Code{condCode}
+	}
+
+	// object is not a basic type
+	if list, ok := object.(*types.List); ok {
+		return extractSingleOrMultiple(env, list)
 	}
 	return nil
 }
@@ -133,4 +158,16 @@ func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []je
 		return true
 	})
 	return defCodes
+}
+
+// labellableCode is not cloned (must generate a new one on each call)
+func processLabellable(env types.Environment, itArgs types.Iterator, labellableCode *jen.Statement) types.Object {
+	if arg0, ok := itArgs.Next(); ok {
+		labelId, ok := arg0.(types.Identifier)
+		if !ok {
+			return wrappedErrorComment
+		}
+		labellableCode.Id(string(labelId))
+	}
+	return wrapper{Renderer: labellableCode}
 }

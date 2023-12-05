@@ -74,7 +74,7 @@ func emptyCode(object types.Object) Renderer {
 	return jen.Empty()
 }
 
-// handle *type, []type, map[t1]t2 format and func or chan types  (and their combinations like [][]*type)
+// handle *type, []type, map[t1]t2, t1[t2,t3] format and func or chan types  (and their combinations like [][]*type)
 // TODO manage anonymous struct ?
 func extractType(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
