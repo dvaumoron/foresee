@@ -58,6 +58,23 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	return nil
 }
 
+func extractParameter(object types.Object) []jen.Code {
+	paramList, ok := object.(*types.List)
+	if !ok {
+		return nil
+	}
+
+	var paramCodes []jen.Code
+	types.ForEach(paramList, func(elem types.Object) bool {
+		// assume it's in "name:type" format (type should be inferred if not declared)
+		paramDesc, _ := elem.(*types.List)
+		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
+		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
+		return true
+	})
+	return paramCodes
+}
+
 func extractSingleOrMultiple(env types.Environment, list *types.List) []jen.Code {
 	switch list.LoadInt(0).(type) {
 	case types.Identifier:

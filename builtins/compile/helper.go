@@ -107,6 +107,8 @@ func extractType(object types.Object) *jen.Statement {
 			}
 		case 3:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+			case names.Dot:
+				return extractQualified(casted)
 			case names.LoadId:
 				// manage [size]type
 				switch castedSize := casted.LoadInt(1).(type) {
@@ -152,15 +154,33 @@ func extractType(object types.Object) *jen.Statement {
 			}
 		default:
 			op, _ := casted.LoadInt(0).(types.Identifier)
-			name, _ := casted.LoadInt(1).(types.Identifier)
-			if genTypes, ok := casted.LoadInt(2).(types.Iterable); op == names.LoadId && ok {
+			nameCode := extractNameOrQualified(casted.LoadInt(1))
+			if genTypes, ok := casted.LoadInt(2).(types.Iterable); op == names.LoadId && nameCode != nil && ok {
 				// type with generic parameter
 				typeCodes := extractTypes(genTypes)
-				return jen.Id(string(name)).Types(typeCodes...)
+				return nameCode.Types(typeCodes...)
 			}
 		}
 	}
 	return nil
+}
+
+func extractNameOrQualified(object types.Object) *jen.Statement {
+	switch casted := object.(type) {
+	case types.Identifier:
+		return jen.Id(string(casted))
+	case *types.List:
+		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot {
+			return extractQualified(casted)
+		}
+	}
+	return nil
+}
+
+func extractQualified(list *types.List) *jen.Statement {
+	packageId, _ := list.LoadInt(1).(types.Identifier)
+	nameId, _ := list.LoadInt(2).(types.Identifier)
+	return jen.Id(string(packageId)).Dot(string(nameId))
 }
 
 // skip first elem (should be ListId)

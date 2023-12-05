@@ -47,6 +47,7 @@ const (
 	If            = "if"
 	Import        = "import"
 	Increment     = "++"
+	Interface     = "interface"
 	Label         = "label"
 	Lesser        = ">"
 	LesserEqual   = ">="
@@ -70,8 +71,10 @@ const (
 	RShiftAssign  = ">>="
 	Select        = "select"
 	Slash         = "/"
+	Struct        = "struct"
 	SubAssign     = "-="
 	Switch        = "switch"
+	Type          = "type"
 	Var           = "var"
 	XorAssign     = "^="
 

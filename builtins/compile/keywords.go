@@ -142,24 +142,12 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 		funcCode.Add(nameCode)
 	}
 
-	argN, _ := itArgs.Next()
-	params, ok := argN.(*types.List)
-	if !ok {
-		return wrappedErrorComment
-	}
-
-	var paramCodes []jen.Code
-	types.ForEach(params, func(elem types.Object) bool {
-		// assume it's in "name:type" format (type should be inferred if not declared)
-		paramDesc, _ := elem.(*types.List)
-		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
-		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
-		return true
-	})
+	params, _ := itArgs.Next()
+	paramCodes := extractParameter(params)
 	funcCode.Params(paramCodes...)
 
 	var instructionCodes []jen.Code
-	argN, _ = itArgs.Next()
+	argN, _ := itArgs.Next()
 	switch casted3 := argN.(type) {
 	case types.Identifier:
 		funcCode.Id(string(casted3))
@@ -310,6 +298,54 @@ func switchForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	caseCodes := compileToCodeSlice(env, itArgs)
 	return wrapper{Renderer: jen.Switch(condCodes...).Block(caseCodes...)}
+}
+
+func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	typeCode := jen.Type().Add(extractNameWithGenericDef(arg0))
+
+	if oldTypeId, ok := arg1.(types.Identifier); ok {
+		switch oldTypeId {
+		case names.Interface:
+			var defCodes []jen.Code
+			types.ForEach(itArgs, func(elem types.Object) bool {
+				casted, _ := elem.(*types.List)
+				var defCode *jen.Statement
+				if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot {
+					// qualified name of another interface
+					defCode = extractQualified(casted)
+				} else {
+					// method description
+					paramCodes := extractParameter(casted.LoadInt(1))
+					defCode = jen.Id(string(header)).Params(paramCodes...)
+					if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+						defCode.Add(typeCode)
+					}
+				}
+				defCodes = append(defCodes, defCode)
+				return true
+			})
+			typeCode.Interface(defCodes...)
+		case names.Struct:
+			var defCodes []jen.Code
+			types.ForEach(itArgs, func(elem types.Object) bool {
+				// TODO
+				return true
+			})
+			typeCode.Struct(defCodes...)
+		default:
+			typeCode.Id(string(oldTypeId))
+		}
+	} else {
+		typeCode.Add(extractNameWithGenericDef(arg1))
+	}
+
+	return wrapper{Renderer: typeCode}
 }
 
 func varForm(env types.Environment, itArgs types.Iterator) types.Object {
