@@ -103,7 +103,7 @@ func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Objec
 }
 
 func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOperator(env, itArgs, names.Decrement)
+	return processUnaryPostOperator(env, itArgs, names.Decrement)
 }
 
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -139,7 +139,7 @@ func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object
 }
 
 func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOperator(env, itArgs, names.Increment)
+	return processUnaryPostOperator(env, itArgs, names.Increment)
 }
 
 func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -188,7 +188,11 @@ func multiplyAssignForm(env types.Environment, itArgs types.Iterator) types.Obje
 }
 
 func notForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOperator(env, itArgs, names.Not)
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: jen.Op(names.Not).Add(compileToCode(env, arg0))}
 }
 
 func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {

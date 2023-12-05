@@ -119,7 +119,7 @@ func processComparison(env types.Environment, itArgs types.Iterator, op string) 
 
 }
 
-func processUnaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processUnaryPostOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
