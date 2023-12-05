@@ -36,8 +36,6 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 				return nil
 			}
 
-			nameCode := jen.Id(string(nameId))
-
 			noError := true
 			var genericCodes []jen.Code
 			types.ForEach(itCasted, func(elem types.Object) bool {
@@ -51,7 +49,7 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 			})
 
 			if noError {
-				return nameCode.Types(genericCodes...)
+				return jen.Id(string(nameId)).Types(genericCodes...)
 			}
 		}
 	}

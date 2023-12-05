@@ -138,7 +138,8 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 		slicingCode.Index(sliceN...)
 		return true
 	})
-	return wrapper{Renderer: slicingCode}
+	// could be a generic function
+	return callableWrapper{Renderer: slicingCode}
 }
 
 func leftShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
