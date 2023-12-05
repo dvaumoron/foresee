@@ -33,9 +33,11 @@ const (
 	DivAssign     = "/="
 	Dot           = "."
 	Equal         = "=="
+	For           = "for"
 	Greater       = "<"
 	GreaterEqual  = "<="
 	GuessMarker   = "?"
+	If            = "if"
 	Import        = "import"
 	Increment     = "++"
 	Lesser        = ">"
@@ -54,6 +56,7 @@ const (
 	Percent       = "%"
 	Pipe          = "|"
 	Plus          = "+"
+	Range         = "range"
 	Return        = "return"
 	RShift        = ">>"
 	RShiftAssign  = ">>="
@@ -78,12 +81,4 @@ const (
 	UnquoteId   types.Identifier = "unquote"
 )
 
-/*
-TODO:
-
-for if else break continue select switch case type struct default fallthrough range go defer return goto
-
-Go keywords excluded:
-
-interface var
-*/
+// TODO: if else break continue select switch case type struct interface default fallthrough go defer goto

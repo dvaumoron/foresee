@@ -20,89 +20,12 @@ import (
 )
 
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
-	codes := compileToCodeSlice(env, itArgs)
-	return wrapper{Renderer: jen.Block(codes...)}
+	intructionCodes := compileToCodeSlice(env, itArgs)
+	return wrapper{Renderer: jen.Block(intructionCodes...)}
 }
 
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processDef(env, itArgs, jen.Const())
-}
-
-// baseCode is not cloned (must generate a new one on each call)
-func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Statement) types.Object {
-	// K is supposed to be "const" or "var" (passed as baseCode)
-	arg0, _ := itArgs.Next()
-	switch casted := arg0.(type) {
-	case types.Identifier:
-		// detect "K name value"
-		arg1, ok := itArgs.Next()
-		if !ok {
-			// no declared type and no value
-			return wrappedErrorComment
-		}
-		return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(compileToCode(env, arg1))}
-	case *types.List:
-		switch casted2 := casted.LoadInt(0).(type) {
-		case types.Identifier:
-			// detect "K name:type value"
-			if casted2 == names.ListId {
-				constId, _ := casted.LoadInt(1).(types.Identifier)
-				defCode := baseCode.Id(string(constId))
-				if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
-					defCode.Add(typeCode)
-				}
-				arg1, ok := itArgs.Next()
-				if ok {
-					defCode.Op(names.Assign).Add(compileToCode(env, arg1))
-				}
-				return wrapper{Renderer: defCode}
-			}
-
-			if casted.Size() > 1 {
-				// "K (name value)"
-				valueCode := compileToCode(env, casted.LoadInt(1))
-				defCodes := []jen.Code{jen.Id(string(casted2)).Op(names.Assign).Add(valueCode)}
-
-				// following lines
-				defCodes = processDefLines(env, itArgs, defCodes)
-
-				return wrapper{Renderer: baseCode.Defs(defCodes...)}
-			}
-		case *types.List:
-			// "K (name:type value)"
-			constId, _ := casted2.LoadInt(1).(types.Identifier)
-			typeCode := extractType(casted2.LoadInt(2))
-			valueCode := compileToCode(env, casted.LoadInt(1))
-			defCodes := []jen.Code{jen.Id(string(constId)).Add(typeCode).Op(names.Assign).Add(valueCode)}
-
-			// following lines
-			defCodes = processDefLines(env, itArgs, defCodes)
-
-			return wrapper{Renderer: baseCode.Defs(defCodes...)}
-		}
-	}
-	return wrappedErrorComment
-}
-
-// handle "(name value)" or "(name:type)" or "(name:type value)"
-func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []jen.Code) []jen.Code {
-	types.ForEach(itArgs, func(elem types.Object) bool {
-		defDesc, _ := elem.(*types.List)
-		var defCode *jen.Statement
-		switch casted := defDesc.LoadInt(0).(type) {
-		case types.Identifier:
-			defCode = jen.Id(string(casted))
-		case *types.List:
-			constId, _ := casted.LoadInt(1).(types.Identifier)
-			defCode = jen.Id(string(constId)).Add(extractType(casted.LoadInt(2)))
-		}
-		if defDesc.Size() > 1 {
-			defCode.Op(names.Assign).Add(compileToCode(env, defDesc.LoadInt(1)))
-		}
-		defCodes = append(defCodes, defCode)
-		return true
-	})
-	return defCodes
 }
 
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -136,6 +59,41 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	jenFile.Add(codes...)
 	return wrapper{Renderer: jenFile}
+}
+
+func forForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	var condCodes []jen.Code
+	switch casted := arg0.(type) {
+	case types.Identifier:
+		condCodes = []jen.Code{jen.Id(string(casted))}
+	case types.Boolean:
+		if !casted {
+			condCodes = []jen.Code{jen.False()}
+		}
+	case types.NoneType:
+		// let the condition empty
+	case *types.List:
+		if casted.Size() != 0 {
+			switch casted.LoadInt(0).(type) {
+			case types.Identifier:
+				// could be a range or a condition
+				condCodes = []jen.Code{compileToCode(env, casted)}
+			case *types.List:
+				condCodes = compileToCodeSlice(env, casted)
+				for i := len(condCodes); i < 3; i++ {
+					condCodes = append(condCodes, jen.Empty())
+				}
+			default:
+				return wrappedErrorComment
+			}
+		}
+	default:
+		return wrappedErrorComment
+	}
+
+	instructionCodes := compileToCodeSlice(env, itArgs)
+	return wrapper{Renderer: jen.For(condCodes...).Block(instructionCodes...)}
 }
 
 func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -206,6 +164,60 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: funcCode.Block(instructionCodes...)}
 }
 
+func ifForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, _ := itArgs.Next()
+	instruction1, ok := arg1.(*types.List)
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	var condCodes []jen.Code
+	switch casted := arg0.(type) {
+	case types.Identifier:
+		condCodes = []jen.Code{jen.Id(string(casted))}
+	case types.Boolean:
+		condCodes = []jen.Code{jen.Lit(bool(casted))}
+	case *types.List:
+		if casted.Size() != 0 {
+			switch casted.LoadInt(0).(type) {
+			case types.Identifier:
+				// normal condition
+				condCodes = []jen.Code{compileToCode(env, casted)}
+			case *types.List:
+				// start with an instruction
+				condCodes = compileToCodeSlice(env, casted)
+			default:
+				return wrappedErrorComment
+			}
+		}
+	default:
+		return wrappedErrorComment
+	}
+
+	ifCode := jen.If(condCodes...)
+	if header, _ := instruction1.LoadInt(0).(types.Identifier); header == names.Block {
+		ifCode.Add(compileToCode(env, arg1))
+	} else {
+		ifCode.Block(compileToCode(env, arg1))
+	}
+
+	if arg2, ok := itArgs.Next(); ok {
+		instruction2, ok := arg2.(*types.List)
+		if !ok {
+			return wrappedErrorComment
+		}
+
+		ifCode.Else()
+		if header, _ := instruction2.LoadInt(0).(types.Identifier); header == names.Block {
+			ifCode.Add(compileToCode(env, arg2))
+		} else {
+			ifCode.Block(compileToCode(env, arg2))
+		}
+	}
+	return wrapper{Renderer: ifCode}
+}
+
 func importForm(env types.Environment, itArgs types.Iterator) types.Object {
 	imports, _ := env.LoadStr(hiddenImportsName)
 	importList, _ := imports.(*types.List)
@@ -240,9 +252,17 @@ func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func rangeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: jen.Range().Add(compileToCode(env, arg0))}
+}
+
 func returnForm(env types.Environment, itArgs types.Iterator) types.Object {
-	codes := compileToCodeSlice(env, itArgs)
-	return wrapper{Renderer: jen.Return(codes...)}
+	valueCodes := compileToCodeSlice(env, itArgs)
+	return wrapper{Renderer: jen.Return(valueCodes...)}
 }
 
 func varForm(env types.Environment, itArgs types.Iterator) types.Object {
