@@ -57,7 +57,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Decrement, types.MakeNativeAppliable(decrementForm))
 	base.StoreStr(names.Default, types.MakeNativeAppliable(defaultForm))
 	base.StoreStr(names.DivAssign, types.MakeNativeAppliable(divideAssignForm))
-	base.StoreStr(names.Dot, types.MakeNativeAppliable(callMethodForm))
+	base.StoreStr(names.Dot, types.MakeNativeAppliable(callMethodForm)) // TODO qualified name and field access
 	base.StoreStr(string(names.EllipsisId), types.MakeNativeAppliable(extendSliceForm))
 	base.StoreStr(names.Equal, types.MakeNativeAppliable(equalForm))
 	base.StoreStr(names.Fallthrough, types.MakeNativeAppliable(fallthroughForm))
