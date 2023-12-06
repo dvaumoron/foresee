@@ -11,7 +11,7 @@ func NewAdder(a) ? # the ? indicate there is a return
 	return (&adder value:a) # equivalent to ((& adder) value:a) as (& a b) will output "a & b"
 
 func (a *adder) Add(b) ? # *adder is equivalent to (* adder)
-	return (+ (. a value) b) # use of + allows to guess it's a base.Addable
+	return (+ a.value b) # use of + allows to guess it's a base.Addable
 
 type adderInt struct
     value int
@@ -20,7 +20,7 @@ func MakeAdderInt(a) ?
 	return (adderInt value:a)
 
 func (a adderInt) Add(b) ?
-    return (+ (. a value) b) # different here because value is an int
+    return (+ a.value b) # different here because value is an int
 
 func Addition(a b) ?
 	return (. a Add b)
