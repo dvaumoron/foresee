@@ -19,11 +19,6 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-func buildConstraint(list *types.List) *jen.Statement {
-	constraintId, _ := list.LoadInt(1).(types.Identifier)
-	return jen.Op(string(names.TildeId)).Id(string(constraintId))
-}
-
 func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:

@@ -19,6 +19,15 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+func assertForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: compileToCode(env, arg0).Assert(extractType(arg1))}
+}
+
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	intructionCodes := compileToCodeSlice(env, itArgs)
 	return wrapper{Renderer: jen.Block(intructionCodes...)}
@@ -39,15 +48,6 @@ func caseForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	instructionCodes := compileToCodeSlice(env, itArgs)
 	return wrapper{Renderer: jen.Case(condCodes...).Op(names.Colon).Add(instructionCodes...)}
-}
-
-func castForm(env types.Environment, itArgs types.Iterator) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
-	if !ok {
-		return wrappedErrorComment
-	}
-	return wrapper{Renderer: compileToCode(env, arg0).Assert(extractType(arg1))}
 }
 
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -362,11 +362,17 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 				switch casted2 := casted.LoadInt(0).(type) {
 				case types.Identifier:
 					switch casted2 {
-					case names.Dot:
+					case names.Dot, names.GetId:
 						// qualified name of another interface
 						defCode = extractQualified(casted)
+					case names.LoadId:
+						if genTypes, ok := casted.LoadInt(2).(*types.List); ok {
+							// qualified type with generic parameter
+							typeCodes := extractTypes(genTypes)
+							defCode = extractNameOrQualified(casted.LoadInt(1)).Types(typeCodes...)
+						}
 					case names.TildeId:
-						defCode = buildConstraint(casted)
+						defCode = jen.Op(string(names.TildeId)).Add(extractType(casted.LoadInt(1)))
 					default:
 						// method description
 						paramCodes := extractParameter(casted.LoadInt(1))
@@ -376,21 +382,35 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 						}
 					}
 				case *types.List:
-					// land here with "~type" syntaxic sugar (handle several by line)
-					first := true
-					types.ForEach(casted, func(elem types.Object) bool {
-						casted2, _ := elem.(*types.List)
-						if first {
-							first = false
-							defCode = buildConstraint(casted2)
-						} else {
-							defCode.Op(names.Pipe).Add(buildConstraint(casted2))
+					// land here with syntaxic sugar
+					switch header, _ := casted2.LoadInt(0).(types.Identifier); header {
+					case names.Dot, names.GetId:
+						// qualified name of another interface
+						defCode = extractQualified(casted)
+					case names.LoadId:
+						if genTypes, ok := casted2.LoadInt(2).(*types.List); ok {
+							// qualified type with generic parameter
+							typeCodes := extractTypes(genTypes)
+							defCode = extractNameOrQualified(casted2.LoadInt(1)).Types(typeCodes...)
 						}
-						return true
-					})
+					case names.TildeId:
+						first := true
+						types.ForEach(casted, func(elem types.Object) bool {
+							casted3, _ := elem.(*types.List)
+							if first {
+								first = false
+								defCode = jen.Op(string(names.TildeId)).Add(extractType(casted3.LoadInt(1)))
+							} else {
+								defCode.Op(names.Pipe).Op(string(names.TildeId)).Add(extractType(casted3.LoadInt(1)))
+							}
+							return true // handle several by line
+						})
+					}
 				}
 
-				defCodes = append(defCodes, defCode)
+				if defCode != nil {
+					defCodes = append(defCodes, defCode)
+				}
 				return true
 			})
 			typeCode.Interface(defCodes...)
