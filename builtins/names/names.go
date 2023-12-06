@@ -85,7 +85,7 @@ const (
 	EllipsisId  types.Identifier = "..."
 	FileId      types.Identifier = "file"
 	FuncId      types.Identifier = "func"
-	ListId      types.Identifier = ":"
+	ListId      types.Identifier = "list"
 	LoadId      types.Identifier = "[]"
 	MapId       types.Identifier = "map"
 	StarId      types.Identifier = "*"
