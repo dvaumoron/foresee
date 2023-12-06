@@ -52,6 +52,7 @@ const (
 	Increment     = "++"
 	Interface     = "interface"
 	Label         = "label"
+	Lambda        = "lambda"
 	Lesser        = ">"
 	LesserEqual   = ">="
 	LShift        = ">>"
@@ -74,6 +75,7 @@ const (
 	RShiftAssign  = ">>="
 	Select        = "select"
 	Slash         = "/"
+	Store         = "[]="
 	Struct        = "struct"
 	SubAssign     = "-="
 	Switch        = "switch"
@@ -93,7 +95,6 @@ const (
 	LoadId      types.Identifier = "[]"
 	MapId       types.Identifier = "map"
 	StarId      types.Identifier = "*"
-	StoreId     types.Identifier = "[]="
 	TildeId     types.Identifier = "~"
 	UnquoteId   types.Identifier = "unquote"
 )

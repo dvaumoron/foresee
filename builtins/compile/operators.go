@@ -213,6 +213,29 @@ func rightShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Ob
 	return processAugmentedAssign(env, itArgs, names.RShiftAssign)
 }
 
+func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	slice0 := extractSliceIndexes(env, arg1)
+	var slices [][]jen.Code
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		sliceN := extractSliceIndexes(env, elem)
+		slices = append(slices, sliceN)
+		return true
+	})
+
+	lastIndex := len(slices) - 1
+	slicingCode := compileToCode(env, arg0).Index(slice0...)
+	for index := 0; index < lastIndex; index++ {
+		slicingCode.Index(slices[index]...)
+	}
+	return wrapper{Renderer: slicingCode.Op(names.Equal).Add(slices[lastIndex][0])}
+}
+
 func substractAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.SubAssign, names.Minus)
 }

@@ -267,7 +267,7 @@ func parseDereference(word string) (types.Object, bool) {
 func parseArrayOrSliceType(word string) (types.Object, bool) {
 	index := strings.IndexByte(word, ']')
 	// test len to keep the basic identifier case
-	if word[0] != '[' || index == -1 || len(word) == 2 || word == string(names.StoreId) {
+	if word[0] != '[' || index == -1 || len(word) == 2 || word == names.Store {
 		return nil, false
 	}
 	nodeList := types.NewList(names.LoadId)
@@ -325,9 +325,8 @@ func parseFuncType(word string) (types.Object, bool) {
 		return nil, false
 	}
 
-	// search of the corresponding closing square bracket
+	// search of the corresponding closing square bracket (without string handling)
 	index, count := 5, 1
-IndexLoop:
 	for wordLen := len(word); index < wordLen; index++ {
 		switch word[index] {
 		case '[':
@@ -335,7 +334,7 @@ IndexLoop:
 		case ']':
 			count--
 			if count == 0 {
-				break IndexLoop
+				break
 			}
 		}
 	}

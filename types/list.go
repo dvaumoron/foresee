@@ -109,11 +109,16 @@ func (it *listIterator) Iter() Iterator {
 }
 
 func (it *listIterator) Next() (Object, bool) {
+	if it.list == nil {
+		return None, false
+	}
+
 	inner := it.list.inner
 	current := it.current
 	if current >= len(inner) {
 		return None, false
 	}
+
 	it.current++
 	return inner[current], true
 }

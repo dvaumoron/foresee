@@ -153,7 +153,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 		}
 
 		arg1, _ := itArgs.Next()
-		methodId, _ := arg1.(types.Identifier)
+		methodId, _ := arg1.(types.Identifier) // no need to handle generic on method
 		funcCode.Parens(receiverCode).Id(string(methodId))
 	} else {
 		funcCode.Add(nameCode)
@@ -163,27 +163,10 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	paramCodes := extractParameter(params)
 	funcCode.Params(paramCodes...)
 
-	var instructionCodes []jen.Code
 	argN, _ := itArgs.Next()
-	switch casted3 := argN.(type) {
-	case types.Identifier:
-		funcCode.Id(string(casted3))
-	case *types.List:
-		if head, _ := casted3.LoadInt(0).(types.Identifier); head == names.ListId {
-			var typeCodes []jen.Code
-			types.ForEach(casted3, func(elem types.Object) bool {
-				typeCodes = append(typeCodes, extractType(elem))
-				return true
-			})
-			funcCode.Parens(jen.List(typeCodes...))
-		} else {
-			if typeCode := extractType(argN); typeCode == nil {
-				// can not extract type, so argN is the first instruction of the code block
-				instructionCodes = []jen.Code{compileToCode(env, argN)}
-			} else {
-				funcCode.Add(typeCode)
-			}
-		}
+	returnCode, instructionCodes := extractReturnType(env, argN)
+	if returnCode != nil {
+		funcCode.Add(returnCode)
 	}
 
 	instructionCodesTemp := compileToCodeSlice(env, itArgs)
@@ -303,6 +286,22 @@ func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
 		return wrappedErrorComment
 	}
 	return wrapper{Renderer: jen.Id(string(labelId)).Op(":")}
+}
+
+func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	paramCodes := extractParameter(arg0)
+	funcCode := jen.Func().Params(paramCodes...)
+
+	arg1, _ := itArgs.Next()
+	returnCode, instructionCodes := extractReturnType(env, arg1)
+	if returnCode != nil {
+		funcCode.Add(returnCode)
+	}
+
+	instructionCodesTemp := compileToCodeSlice(env, itArgs)
+	instructionCodes = append(instructionCodes, instructionCodesTemp...)
+	return callableWrapper{Renderer: funcCode.Block(instructionCodes...)}
 }
 
 func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
