@@ -36,11 +36,13 @@ const (
 	DeclareAssign = ":="
 	Decrement     = "--"
 	Default       = "default"
+	Defer         = "defer"
 	DivAssign     = "/="
 	Dot           = "."
 	Equal         = "=="
 	Fallthrough   = "fallthrough"
 	For           = "for"
+	Go            = "go"
 	Goto          = "goto"
 	Greater       = "<"
 	GreaterEqual  = "<="
@@ -95,5 +97,3 @@ const (
 	TildeId     types.Identifier = "~"
 	UnquoteId   types.Identifier = "unquote"
 )
-
-// TODO: go defer

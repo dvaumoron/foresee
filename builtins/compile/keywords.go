@@ -59,6 +59,14 @@ func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: jen.Default().Op(names.Colon).Add(intructionCodes...)}
 }
 
+func deferForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: jen.Defer().Add(compileToCode(env, arg0))}
+}
+
 func continueForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processLabellable(env, itArgs, jen.Continue())
 }
@@ -89,7 +97,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 		case "_":
 			jenFile.Anon(string(path))
 		case "":
-			jenFile.ImportName(string(path), string(name))
+			jenFile.ImportName(string(path), "")
 		default:
 			jenFile.ImportAlias(string(path), string(name))
 		}
@@ -200,6 +208,14 @@ func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	// returned value could be callable
 	return callableWrapper{Renderer: getCode}
+}
+
+func goForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: jen.Go().Add(compileToCode(env, arg0))}
 }
 
 func gotoForm(env types.Environment, itArgs types.Iterator) types.Object {
