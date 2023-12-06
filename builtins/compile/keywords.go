@@ -400,9 +400,8 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 			typeCode.Id(string(oldTypeId))
 		}
 	} else {
-		typeCode.Add(extractNameWithGenericDef(arg1))
+		typeCode.Add(extractType(arg1))
 	}
-
 	return wrapper{Renderer: typeCode}
 }
 

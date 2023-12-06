@@ -123,6 +123,13 @@ func extractType(object types.Object) *jen.Statement {
 						typeCodes := extractTypes(genTypes)
 						return jen.Id(string(castedSize)).Types(typeCodes...)
 					}
+				case *types.List:
+					header, _ := castedSize.LoadInt(1).(types.Identifier)
+					if genTypes, ok := casted.LoadInt(2).(*types.List); (header == names.Dot || header == names.GetId) && ok {
+						// qualified type with generic parameter
+						typeCodes := extractTypes(genTypes)
+						return extractQualified(castedSize).Types(typeCodes...)
+					}
 				}
 			case names.MapId:
 				// manage map[t1]t2
@@ -151,14 +158,6 @@ func extractType(object types.Object) *jen.Statement {
 				default:
 					return funcCode.Parens(jen.List(outputTypeIds...))
 				}
-			}
-		default:
-			op, _ := casted.LoadInt(0).(types.Identifier)
-			nameCode := extractNameOrQualified(casted.LoadInt(1))
-			if genTypes, ok := casted.LoadInt(2).(types.Iterable); op == names.LoadId && nameCode != nil && ok {
-				// type with generic parameter
-				typeCodes := extractTypes(genTypes)
-				return nameCode.Types(typeCodes...)
 			}
 		}
 	}

@@ -223,8 +223,7 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	slice0 := extractSliceIndexes(env, arg1)
 	var slices [][]jen.Code
 	types.ForEach(itArgs, func(elem types.Object) bool {
-		sliceN := extractSliceIndexes(env, elem)
-		slices = append(slices, sliceN)
+		slices = append(slices, extractSliceIndexes(env, elem))
 		return true
 	})
 
