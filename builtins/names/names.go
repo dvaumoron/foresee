@@ -24,7 +24,7 @@ const (
 	AndNot        = "&^"
 	AndNotAssign  = "&^="
 	Arrow         = "<-"
-	Assert        = "cast"
+	Assert        = "assert"
 	Assign        = "="
 	Block         = "block"
 	Break         = "break"
