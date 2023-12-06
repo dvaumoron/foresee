@@ -39,8 +39,8 @@ func init() {
 		// typeList format is "t1,t2" as (list t1 t2)
 		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
 		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "a:b:c", "a.b.c", "type[typeList]"
-		// as (<-chan type), (chan<- type), (chan type), (list a b c), (get a b c), ([] type typeList)
-		parseArrowChanType, parseChanArrowType, parseChanType, parseList, parseDotField, parseGenericType,
+		// as (<-chan type), (chan<- type), (chan type), (list a b c), ([] type typeList), (get a b c)
+		parseArrowChanType, parseChanArrowType, parseChanType, parseList, parseGenericType, parseDotField,
 	}
 }
 
@@ -126,32 +126,24 @@ func parseList(word string) (types.Object, bool) {
 	if word == names.DeclareAssign {
 		return nil, false
 	}
-	return parseListSep(word, ':')
+	return parseListSep(word, ':', names.ListId)
 }
 
-// manage melting with string literal
-// however does not work with nested square bracket
-func parseListSep(word string, sep rune) (types.Object, bool) {
+// manage melting with string literal or nested square bracket
+func parseListSep(word string, sep rune, kindId types.Identifier) (types.Object, bool) {
 	chars := make(chan rune)
 	go sendChar(chars, word)
+
 	index := 0
+	errorB := true
 	var indexes []int
 	for char := range chars {
 		switch char {
 		case '"', '\'':
-			delim := char
-		InnerCharLoop:
-			for char := range chars {
-				index++
-				switch char {
-				case delim:
-					// no need of unended string detection,
-					// this have already been tested in the word splitting part
-					break InnerCharLoop
-				case '\\':
-					<-chars
-					index++
-				}
+			index = consumeString(chars, index, char)
+		case '[':
+			if index, errorB = consumeIndexed(chars, index); errorB {
+				return nil, false
 			}
 		case sep:
 			indexes = append(indexes, index)
@@ -161,7 +153,7 @@ func parseListSep(word string, sep rune) (types.Object, bool) {
 	if len(indexes) == 0 {
 		return nil, false
 	}
-	nodeList := types.NewList(names.ListId)
+	nodeList := types.NewList(kindId)
 	startIndex := 0
 	for _, splitIndex := range indexes {
 		nodeList.Add(handleSubWord(word[startIndex:splitIndex]))
@@ -169,6 +161,41 @@ func parseListSep(word string, sep rune) (types.Object, bool) {
 	}
 	nodeList.Add(handleSubWord(word[startIndex:]))
 	return nodeList, true
+}
+
+func consumeString(chars <-chan rune, index int, delim rune) int {
+	for char := range chars {
+		index++
+		switch char {
+		case delim:
+			// no need of unended string detection,
+			// this have already been tested in the word splitting part
+			break
+		case '\\':
+			<-chars
+			index++
+		}
+	}
+	return index
+}
+
+// true in the second returned value indicate an error
+func consumeIndexed(chars <-chan rune, index int) (int, bool) {
+	count := 1
+	for char := range chars {
+		index++
+		switch char {
+		case '"', '\'':
+			index = consumeString(chars, index, char)
+		case '[':
+			count++
+		case ']':
+			if count--; count == 0 {
+				return index, false
+			}
+		}
+	}
+	return 0, true
 }
 
 func handleSubWord(word string) types.Object {
@@ -330,7 +357,7 @@ func handleTypeList(word string) types.Object {
 		return nodeList
 	}
 
-	if res, ok := parseListSep(word, ','); ok {
+	if res, ok := parseListSep(word, ',', names.ListId); ok {
 		return res
 	}
 
@@ -343,6 +370,7 @@ func parseGenericType(word string) (types.Object, bool) {
 	index := strings.IndexByte(word, '[')
 	lastIndex := len(word) - 1
 	// test len to keep the basic identifier case
+	// (no need to test ':' (this rule is applied after parseList))
 	if index == -1 || lastIndex == 1 || word[lastIndex] != ']' {
 		return nil, false
 	}
@@ -354,13 +382,8 @@ func parseGenericType(word string) (types.Object, bool) {
 }
 
 func parseDotField(word string) (types.Object, bool) {
-	if strings.IndexByte(word, '.') > 0 {
+	if word == names.Dot {
 		return nil, false
 	}
-
-	nodeList := types.NewList(names.GetId)
-	for _, sub := range strings.Split(word, names.Dot) {
-		nodeList.Add(handleSubWord(sub))
-	}
-	return nodeList, true
+	return parseListSep(word, '.', names.GetId)
 }

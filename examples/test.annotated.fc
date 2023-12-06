@@ -9,7 +9,7 @@ type guessed0[T0:any,T1:any] interface {
 	Add(T0) T1
 }
 
-type ([] adder (list T (. base Addable))) struct
+type adder[T:base.Addable] struct
 	value T
 
 func NewAdder(a) *adder
@@ -25,7 +25,7 @@ func MakeAdderInt(a) adderInt
 	return (adderInt value:a)
 
 func (a adderInt) Add(b) int
-    return (+ (. a value) b)
+    return (+ a.value b) # a.value is equivalent to (get a value)
 
 func Addition[T0:any,T1:any] (a:guessed0[T0,T1]  b:T0) T1
 	return (. a Add b)
