@@ -359,17 +359,37 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 			types.ForEach(itArgs, func(elem types.Object) bool {
 				casted, _ := elem.(*types.List)
 				var defCode *jen.Statement
-				if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot {
-					// qualified name of another interface
-					defCode = extractQualified(casted)
-				} else {
-					// method description
-					paramCodes := extractParameter(casted.LoadInt(1))
-					defCode = jen.Id(string(header)).Params(paramCodes...)
-					if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
-						defCode.Add(typeCode)
+				switch casted2 := casted.LoadInt(0).(type) {
+				case types.Identifier:
+					switch casted2 {
+					case names.Dot:
+						// qualified name of another interface
+						defCode = extractQualified(casted)
+					case names.TildeId:
+						defCode = buildConstraint(casted)
+					default:
+						// method description
+						paramCodes := extractParameter(casted.LoadInt(1))
+						defCode = jen.Id(string(casted2)).Params(paramCodes...)
+						if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+							defCode.Add(typeCode)
+						}
 					}
+				case *types.List:
+					// land here with "~type" syntaxic sugar (handle several by line)
+					first := true
+					types.ForEach(casted, func(elem types.Object) bool {
+						casted2, _ := elem.(*types.List)
+						if first {
+							first = false
+							defCode = buildConstraint(casted2)
+						} else {
+							defCode.Op(names.Pipe).Add(buildConstraint(casted2))
+						}
+						return true
+					})
 				}
+
 				defCodes = append(defCodes, defCode)
 				return true
 			})
