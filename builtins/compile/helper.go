@@ -102,7 +102,7 @@ func extractType(object types.Object) *jen.Statement {
 
 				typeCodes := extractTypes(params)
 				return jen.Func().Params(typeCodes...)
-			case names.EllipsisId, names.StarId:
+			case names.EllipsisId, names.StarId, names.TildeId:
 				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1)))
 			}
 		case 3:
