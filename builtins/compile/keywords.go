@@ -160,7 +160,11 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	}
 
 	params, _ := itArgs.Next()
-	paramCodes := extractParameter(params)
+	paramCodes, ok := extractParameter(params)
+	if !ok {
+		return wrappedErrorComment
+	}
+
 	funcCode.Params(paramCodes...)
 
 	argN, _ := itArgs.Next()
@@ -290,7 +294,11 @@ func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	paramCodes := extractParameter(arg0)
+	paramCodes, ok := extractParameter(arg0)
+	if !ok {
+		return wrappedErrorComment
+	}
+
 	funcCode := jen.Func().Params(paramCodes...)
 
 	arg1, _ := itArgs.Next()
@@ -375,9 +383,9 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 						defCode = jen.Op(string(names.TildeId)).Add(extractType(casted.LoadInt(1)))
 					default:
 						// method description
-						paramCodes := extractParameter(casted.LoadInt(1))
+						paramCodes, ok := extractParameter(casted.LoadInt(1))
 						defCode = jen.Id(string(casted2)).Params(paramCodes...)
-						if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+						if typeCode := extractType(casted.LoadInt(2)); ok && typeCode != nil {
 							defCode.Add(typeCode)
 						}
 					}

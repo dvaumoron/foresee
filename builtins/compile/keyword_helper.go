@@ -36,19 +36,7 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 				return nil
 			}
 
-			noError := true
-			var genericCodes []jen.Code
-			types.ForEach(itCasted, func(elem types.Object) bool {
-				var genDesc *types.List
-				// assume it's in "name:type" format
-				if genDesc, noError = elem.(*types.List); noError {
-					genId, _ := genDesc.LoadInt(1).(types.Identifier)
-					genericCodes = append(genericCodes, jen.Id(string(genId)).Add(extractType(genDesc.LoadInt(2))))
-				}
-				return noError
-			})
-
-			if noError {
+			if genericCodes, noError := innerExtractParameter(itCasted); noError {
 				return jen.Id(string(nameId)).Types(genericCodes...)
 			}
 		}
@@ -56,21 +44,27 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	return nil
 }
 
-func extractParameter(object types.Object) []jen.Code {
-	paramList, ok := object.(*types.List)
+func extractParameter(object types.Object) ([]jen.Code, bool) {
+	paramIterable, ok := object.(types.Iterable)
 	if !ok {
-		return nil
+		return nil, false
 	}
+	return innerExtractParameter(paramIterable)
+}
 
+func innerExtractParameter(paramIterable types.Iterable) ([]jen.Code, bool) {
+	noError := true
 	var paramCodes []jen.Code
-	types.ForEach(paramList, func(elem types.Object) bool {
+	types.ForEach(paramIterable, func(elem types.Object) bool {
+		var paramDesc *types.List
 		// assume it's in "name:type" format (type should be inferred if not declared)
-		paramDesc, _ := elem.(*types.List)
-		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
-		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
-		return true
+		if paramDesc, noError = elem.(*types.List); noError {
+			varId, _ := paramDesc.LoadInt(1).(types.Identifier)
+			paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
+		}
+		return noError
 	})
-	return paramCodes
+	return paramCodes, noError
 }
 
 func extractReturnType(env types.Environment, object types.Object) (jen.Code, []jen.Code) {
