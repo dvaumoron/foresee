@@ -107,7 +107,7 @@ func extractType(object types.Object) *jen.Statement {
 			}
 		case 3:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
-			case names.Dot:
+			case names.Dot, names.GetId:
 				return extractQualified(casted)
 			case names.LoadId:
 				// manage [size]type
@@ -170,7 +170,7 @@ func extractNameOrQualified(object types.Object) *jen.Statement {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
-		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot {
+		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot || header == names.GetId {
 			return extractQualified(casted)
 		}
 	}
