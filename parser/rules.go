@@ -38,9 +38,9 @@ func init() {
 		// as (... type), (~ type), (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
 		// typeList format is "t1,t2" as (list t1 t2)
 		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
-		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "type[typeList]", "a:b"
-		// as (<-chan type), (chan<- type), (chan type), ([] type typeList), (list a b)
-		parseArrowChanType, parseChanArrowType, parseChanType, parseGenericType, parseList,
+		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "a:b:c", "a.b.c", "type[typeList]"
+		// as (<-chan type), (chan<- type), (chan type), (list a b c), (get a b c), ([] type typeList)
+		parseArrowChanType, parseChanArrowType, parseChanType, parseList, parseDotField, parseGenericType,
 	}
 }
 
