@@ -352,3 +352,15 @@ func parseGenericType(word string) (types.Object, bool) {
 	nodeList.Add(handleTypeList(word[index+1 : lastIndex]))
 	return nodeList, true
 }
+
+func parseDotField(word string) (types.Object, bool) {
+	if strings.IndexByte(word, '.') > 0 {
+		return nil, false
+	}
+
+	nodeList := types.NewList(names.GetId)
+	for _, sub := range strings.Split(word, names.Dot) {
+		nodeList.Add(handleSubWord(sub))
+	}
+	return nodeList, true
+}

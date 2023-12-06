@@ -41,6 +41,15 @@ func caseForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: jen.Case(condCodes...).Op(names.Colon).Add(instructionCodes...)}
 }
 
+func castForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return wrapper{Renderer: compileToCode(env, arg0).Assert(extractType(arg1))}
+}
+
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processDef(env, itArgs, jen.Const())
 }
@@ -172,6 +181,25 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	instructionCodesTemp := compileToCodeSlice(env, itArgs)
 	instructionCodes = append(instructionCodes, instructionCodesTemp...)
 	return wrapper{Renderer: funcCode.Block(instructionCodes...)}
+}
+
+func getForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, _ := itArgs.Next()
+	fieldId, ok := arg1.(types.Identifier)
+	if !ok {
+		return wrappedErrorComment
+	}
+
+	getCode := compileToCode(env, arg0).Dot(string(fieldId))
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		fieldId, _ := elem.(types.Identifier)
+		getCode.Dot(string(fieldId))
+		return true
+	})
+
+	// returned value could be callable
+	return callableWrapper{Renderer: getCode}
 }
 
 func gotoForm(env types.Environment, itArgs types.Iterator) types.Object {

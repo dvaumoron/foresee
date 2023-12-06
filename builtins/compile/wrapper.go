@@ -28,6 +28,7 @@ var (
 type Renderer interface {
 	types.Renderer
 	jen.Code
+	Assert(jen.Code) *jen.Statement
 	Dot(string) *jen.Statement
 	Index(...jen.Code) *jen.Statement
 	Op(string) *jen.Statement
