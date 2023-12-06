@@ -94,4 +94,4 @@ const (
 	UnquoteId   types.Identifier = "unquote"
 )
 
-// TODO: type struct interface go defer
+// TODO: go defer

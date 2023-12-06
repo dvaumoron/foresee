@@ -334,7 +334,22 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 		case names.Struct:
 			var defCodes []jen.Code
 			types.ForEach(itArgs, func(elem types.Object) bool {
-				// TODO
+				casted, _ := elem.(*types.List)
+				fieldId, _ := casted.LoadInt(0).(types.Identifier)
+				defCode := jen.Id(string(fieldId)).Add(extractType(casted.LoadInt(1)))
+				if casted.Size() > 2 {
+					itemList, _ := elem.(*types.List)
+					items := map[string]string{}
+					types.ForEach(itemList, func(item types.Object) bool {
+						casted, _ := elem.(*types.List)
+						key := casted.LoadInt(1).(types.String)
+						value := casted.LoadInt(2).(types.String)
+						items[string(key)] = string(value)
+						return true
+					})
+					defCode.Tag(items)
+				}
+				defCodes = append(defCodes, defCode)
 				return true
 			})
 			typeCode.Struct(defCodes...)
