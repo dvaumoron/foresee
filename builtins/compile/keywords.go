@@ -86,6 +86,7 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	packageNameId, _ := packageName.(types.Identifier)
 
 	jenFile := jen.NewFile(string(packageNameId))
+	jenFile.Add(codes...)
 
 	imports, _ := env.LoadStr(hiddenImportsName)
 	importList, _ := imports.(*types.List)
@@ -103,8 +104,6 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 		}
 		return true
 	})
-
-	jenFile.Add(codes...)
 	return wrapper{Renderer: jenFile}
 }
 
@@ -175,7 +174,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	instructionCodesTemp := compileToCodeSlice(env, itArgs)
 	instructionCodes = append(instructionCodes, instructionCodesTemp...)
-	return wrapper{Renderer: funcCode.Block(instructionCodes...)}
+	return wrapper{Renderer: funcCode.Block(instructionCodes...).Line()}
 }
 
 func getForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -450,7 +449,7 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	} else {
 		typeCode.Add(extractType(arg1))
 	}
-	return wrapper{Renderer: typeCode}
+	return wrapper{Renderer: typeCode.Line()}
 }
 
 func varForm(env types.Environment, itArgs types.Iterator) types.Object {

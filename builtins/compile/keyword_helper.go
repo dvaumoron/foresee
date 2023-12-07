@@ -71,8 +71,8 @@ func innerExtractParameter(paramIterable types.Iterable) ([]jen.Code, bool) {
 	return paramCodes, noError
 }
 
-func extractReturnType(env types.Environment, object types.Object) (jen.Code, []jen.Code) {
-	var returnCode jen.Code
+func extractReturnType(env types.Environment, object types.Object) (*jen.Statement, []jen.Code) {
+	var returnCode *jen.Statement
 	var instructionCodes []jen.Code
 	switch casted := object.(type) {
 	case types.NoneType:
@@ -125,74 +125,57 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		// detect "K name value"
-		arg1, ok := itArgs.Next()
-		if !ok {
-			// no declared type and no value
-			return wrappedErrorComment
+		// no declared type, need a value
+		if arg1, ok := itArgs.Next(); ok {
+			return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(compileToCode(env, arg1))}
 		}
-		return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(compileToCode(env, arg1))}
 	case *types.List:
-		switch casted2 := casted.LoadInt(0).(type) {
-		case types.Identifier:
-			// detect "K name:type value"
-			if casted2 == names.ListId {
-				constId, _ := casted.LoadInt(1).(types.Identifier)
-				defCode := baseCode.Id(string(constId))
-				if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
-					defCode.Add(typeCode)
-				}
-				arg1, ok := itArgs.Next()
-				if ok {
-					defCode.Op(names.Assign).Add(compileToCode(env, arg1))
-				}
-				return wrapper{Renderer: defCode}
+		// detect "K name:type" and an optional value
+		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.ListId {
+			nameId, _ := casted.LoadInt(1).(types.Identifier)
+			baseCode.Id(string(nameId))
+			if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+				baseCode.Add(typeCode)
 			}
-
-			if casted.Size() > 1 {
-				// "K (name value)"
-				valueCode := compileToCode(env, casted.LoadInt(1))
-				defCodes := []jen.Code{jen.Id(string(casted2)).Op(names.Assign).Add(valueCode)}
-
-				// following lines
-				defCodes = processDefLines(env, itArgs, defCodes)
-
-				return wrapper{Renderer: baseCode.Defs(defCodes...)}
+			if arg1, ok := itArgs.Next(); ok {
+				baseCode.Op(names.Assign).Add(compileToCode(env, arg1))
 			}
-		case *types.List:
-			// "K (name:type value)"
-			constId, _ := casted2.LoadInt(1).(types.Identifier)
-			typeCode := extractType(casted2.LoadInt(2))
-			valueCode := compileToCode(env, casted.LoadInt(1))
-			defCodes := []jen.Code{jen.Id(string(constId)).Add(typeCode).Op(names.Assign).Add(valueCode)}
-
-			// following lines
-			defCodes = processDefLines(env, itArgs, defCodes)
-
-			return wrapper{Renderer: baseCode.Defs(defCodes...)}
+			return wrapper{Renderer: baseCode}
 		}
+
+		defCodes := []jen.Code{processDefLine(env, casted)}
+
+		// following lines (optional)
+		defCodes = processDefLines(env, itArgs, defCodes)
+		return wrapper{Renderer: baseCode.Defs(defCodes...)}
 	}
 	return wrappedErrorComment
 }
 
-// handle "(name value)" or "(name:type)" or "(name:type value)"
+// handle multiple "(name value)" or "(name:type)" or "(name:type value)"
 func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []jen.Code) []jen.Code {
 	types.ForEach(itArgs, func(elem types.Object) bool {
 		defDesc, _ := elem.(*types.List)
-		var defCode *jen.Statement
-		switch casted := defDesc.LoadInt(0).(type) {
-		case types.Identifier:
-			defCode = jen.Id(string(casted))
-		case *types.List:
-			constId, _ := casted.LoadInt(1).(types.Identifier)
-			defCode = jen.Id(string(constId)).Add(extractType(casted.LoadInt(2)))
-		}
-		if defDesc.Size() > 1 {
-			defCode.Op(names.Assign).Add(compileToCode(env, defDesc.LoadInt(1)))
-		}
-		defCodes = append(defCodes, defCode)
+		defCodes = append(defCodes, processDefLine(env, defDesc))
 		return true
 	})
 	return defCodes
+}
+
+// handle "(name value)" or "(name:type)" or "(name:type value)"
+func processDefLine(env types.Environment, defDesc *types.List) jen.Code {
+	var defCode *jen.Statement
+	switch casted := defDesc.LoadInt(0).(type) {
+	case types.Identifier:
+		defCode = jen.Id(string(casted))
+	case *types.List:
+		nameId, _ := casted.LoadInt(1).(types.Identifier)
+		defCode = jen.Id(string(nameId)).Add(extractType(casted.LoadInt(2)))
+	}
+	if defDesc.Size() > 1 {
+		defCode.Op(names.Assign).Add(compileToCode(env, defDesc.LoadInt(1)))
+	}
+	return defCode
 }
 
 // labellableCode is not cloned (must generate a new one on each call)

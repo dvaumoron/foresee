@@ -82,8 +82,6 @@ func extractType(object types.Object) *jen.Statement {
 		return jen.Id(string(casted))
 	case *types.List:
 		switch casted.Size() {
-		case 0, 1:
-			return nil
 		case 2:
 			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 			case names.ArrowChanId:
@@ -136,17 +134,13 @@ func extractType(object types.Object) *jen.Statement {
 				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
 			case names.FuncId:
 				params, ok := casted.LoadInt(1).(*types.List)
-				if !ok {
+				returns, ok2 := casted.LoadInt(2).(*types.List)
+				if !(ok && ok2) {
 					return nil
 				}
 
 				typeCodes := extractTypes(params)
 				funcCode := jen.Func().Params(typeCodes...)
-
-				returns, ok := casted.LoadInt(2).(*types.List)
-				if !ok {
-					return nil
-				}
 
 				switch outputTypeIds := extractTypes(returns); len(outputTypeIds) {
 				case 0:
