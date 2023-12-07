@@ -59,21 +59,21 @@ func main() {
 func loadGoMod() bool {
 	goModFile, err := os.Open("go.mod")
 	if err != nil {
-		fmt.Printf("Error while reading go.mod : %s", err)
+		fmt.Println("Error while reading go.mod :", err)
 		return false
 	}
 	defer goModFile.Close()
 
 	moduleName, ok := "", false
 	scanner := bufio.NewScanner(goModFile)
-	for scanner.Scan() {
-		if moduleName, ok = strings.CutPrefix("module ", scanner.Text()); !ok {
-			fmt.Printf("Error while parsing go.mod : should start with module declaration line")
+	if scanner.Scan() {
+		if moduleName, ok = strings.CutPrefix(scanner.Text(), "module "); !ok {
+			fmt.Println("Error while parsing go.mod : should start with module declaration line")
 			return false
 		}
 	}
 	if err = scanner.Err(); err != nil {
-		fmt.Printf("Error while parsing go.mod : %s", err)
+		fmt.Println("Error while parsing go.mod :", err)
 		return false
 	}
 	if ok = moduleName != ""; ok {
@@ -86,38 +86,38 @@ func loadGoMod() bool {
 func processFile(filePath string) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Error while reading %s : %s", filePath, err)
+		fmt.Println("Error while reading", filePath, ":", err)
 		return
 	}
 
 	parsed, err := parser.Parse(string(data))
 	if err != nil {
-		fmt.Printf("Error while parsing %s : %s", filePath, err)
+		fmt.Println("Error while parsing", filePath, ":", err)
 		return
 	}
 
 	expanded, err := eval.ExpandMacro(parsed)
 	if err != nil {
-		fmt.Printf("Error while expanding %s : %s", filePath, err)
+		fmt.Println("Error while expanding", filePath, ":", err)
 		return
 	}
 
 	// TODO manage inference across multiple file
 	infered, err := infer.InferTypes(expanded)
 	if err != nil {
-		fmt.Printf("Error while infering %s : %s", filePath, err)
+		fmt.Println("Error while infering", filePath, ":", err)
 		return
 	}
 
 	var outputdata bytes.Buffer
 	outputPath := computeOutputPath(filePath)
 	if err = compile.Compile(infered).Render(&outputdata); err != nil {
-		fmt.Printf("Error while rendering %s : %s", outputPath, err)
+		fmt.Println("Error while rendering", outputPath, ":", err)
 		return
 	}
 
 	if err = os.WriteFile(outputPath, outputdata.Bytes(), 0644); err != nil {
-		fmt.Printf("Error while writing %s : %s", outputPath, err)
+		fmt.Println("Error while writing", outputPath, ":", err)
 	}
 }
 

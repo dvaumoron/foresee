@@ -70,7 +70,8 @@ LineLoop:
 					} else {
 						listStack.pop()
 						if top != index {
-							for top = indentStack.pop(); top > index; top = indentStack.pop() {
+							indentStack.pop()
+							for top = indentStack.peek(); top > index; top = indentStack.pop() {
 								listStack.pop()
 							}
 							if top < index {
