@@ -118,7 +118,7 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 			return extractArrayOrGenType(casted.LoadInt(1), casted.LoadInt(2))
 		case names.MapId:
 			// manage map[t1]t2
-			return jen.Op(string(op)).Add(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
+			return jen.Map(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
 			returns, ok2 := casted.LoadInt(2).(*types.List)

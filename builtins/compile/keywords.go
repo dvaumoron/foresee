@@ -384,10 +384,16 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 					default:
 						// method description
 						paramTypes, _ := casted.LoadInt(1).(*types.List)
-						// do not skip first (!= extractTypes)
 						var paramCodes []jen.Code
+						// handle type or name:type
 						types.ForEach(paramTypes, func(elem types.Object) bool {
-							paramCodes = append(paramCodes, extractType(elem))
+							typeCode := extractType(elem)
+							if typeCode == nil {
+								casted, _ := elem.(*types.List)
+								paramId, _ := casted.LoadInt(1).(types.Identifier)
+								typeCode = jen.Id(string(paramId)).Add(extractType(casted.LoadInt(2)))
+							}
+							paramCodes = append(paramCodes, typeCode)
 							return true
 						})
 
@@ -433,9 +439,16 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 			var defCodes []jen.Code
 			types.ForEach(itArgs, func(elem types.Object) bool {
 				casted, _ := elem.(*types.List)
+				castedSize := casted.Size()
+				if castedSize == 1 {
+					// nested type
+					defCodes = append(defCodes, extractType(casted.LoadInt(0)))
+					return true
+				}
+
 				fieldId, _ := casted.LoadInt(0).(types.Identifier)
 				defCode := jen.Id(string(fieldId)).Add(extractType(casted.LoadInt(1)))
-				if casted.Size() > 2 {
+				if castedSize > 2 {
 					itemList, _ := elem.(*types.List)
 					items := map[string]string{}
 					types.ForEach(itemList, func(item types.Object) bool {
