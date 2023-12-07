@@ -33,6 +33,7 @@ var (
 	Builtins = initBuitins()
 )
 
+// TODO improve handling of literal versus function call
 func Compile(l *types.List) types.Object {
 	return l.Eval(compileEnvironment{Environment: types.MakeLocalEnvironment(Builtins)})
 }
