@@ -170,6 +170,33 @@ func extractQualified(list *types.List) *jen.Statement {
 	return jen.Id(string(packageId)).Dot(string(nameId))
 }
 
+// handle [size]type or type[typelist]
+func extractArrayOrGenType(arg0 types.Object, arg1 types.Object) *jen.Statement {
+	switch casted := arg0.(type) {
+	case types.Integer:
+		return jen.Index(jen.Lit(int(casted))).Add(extractType(arg1))
+	case types.Identifier:
+		if casted == names.EllipsisId {
+			// array type with automatic count
+			return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(arg1))
+		} else {
+			genTypes, _ := arg1.(*types.List)
+			// type with generic parameter
+			if typeCodes, ok := extractTypes(genTypes); ok {
+				return jen.Id(string(casted)).Types(typeCodes...)
+			}
+		}
+	case *types.List:
+		typeCode := extractType(casted)
+		genTypes, _ := arg1.(*types.List)
+		// qualified type with generic parameter
+		if typeCodes, ok := extractTypes(genTypes); typeCode != nil && ok {
+			return typeCode.Types(typeCodes...)
+		}
+	}
+	return nil
+}
+
 // skip first elem (should be ListId)
 func extractTypes(typeIterable types.Iterable) ([]jen.Code, bool) {
 	itType := typeIterable.Iter() // no need to close (done in ForEach)
