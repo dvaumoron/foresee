@@ -81,78 +81,72 @@ func extractType(object types.Object) *jen.Statement {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
-		switch casted.Size() {
-		case 2:
-			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
-			case names.ArrowChanId:
-				return jen.Op(names.Arrow).Chan().Add(extractType(casted.LoadInt(1)))
-			case names.ChanArrowId:
-				return jen.Chan().Op(names.Arrow).Add(extractType(casted.LoadInt(1)))
-			case names.ChanId:
-				return jen.Chan().Add(extractType(casted.LoadInt(1)))
-			case names.LoadId:
-				return jen.Index().Add(extractType(casted.LoadInt(1)))
-			case names.FuncId:
-				params, ok := casted.LoadInt(1).(*types.List)
-				if !ok {
-					return nil
-				}
+		return extractTypeFromList(casted)
+	}
+	return nil
+}
 
-				typeCodes := extractTypes(params)
+func extractTypeFromList(casted *types.List) *jen.Statement {
+	switch casted.Size() {
+	case 2:
+		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+		case names.ArrowChanId:
+			return jen.Op(names.Arrow).Chan().Add(extractType(casted.LoadInt(1)))
+		case names.ChanArrowId:
+			return jen.Chan().Op(names.Arrow).Add(extractType(casted.LoadInt(1)))
+		case names.ChanId:
+			return jen.Chan().Add(extractType(casted.LoadInt(1)))
+		case names.LoadId:
+			return jen.Index().Add(extractType(casted.LoadInt(1)))
+		case names.FuncId:
+			params, ok := casted.LoadInt(1).(*types.List)
+			if !ok {
+				return nil
+			}
+
+			if typeCodes, ok := extractTypes(params); ok {
 				return jen.Func().Params(typeCodes...)
-			case names.EllipsisId, names.StarId, names.TildeId:
-				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1)))
 			}
-		case 3:
-			switch op, _ := casted.LoadInt(0).(types.Identifier); op {
-			case names.Dot, names.GetId:
-				return extractQualified(casted)
-			case names.LoadId:
-				// manage [size]type
-				switch castedSize := casted.LoadInt(1).(type) {
-				case types.Integer:
-					return jen.Index(jen.Lit(int(castedSize))).Add(extractType(casted.LoadInt(2)))
-				case types.Identifier:
-					if castedSize == names.EllipsisId {
-						// array type with automatic count
-						return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(casted.LoadInt(2)))
-					} else if genTypes, ok := casted.LoadInt(2).(*types.List); ok {
-						// type with generic parameter
-						typeCodes := extractTypes(genTypes)
-						return jen.Id(string(castedSize)).Types(typeCodes...)
-					}
-				case *types.List:
-					header, _ := castedSize.LoadInt(1).(types.Identifier)
-					if genTypes, ok := casted.LoadInt(2).(*types.List); (header == names.Dot || header == names.GetId) && ok {
-						// qualified type with generic parameter
-						typeCodes := extractTypes(genTypes)
-						return extractQualified(castedSize).Types(typeCodes...)
-					}
-				}
-			case names.MapId:
-				// manage map[t1]t2
-				return jen.Op(string(op)).Add(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
-			case names.FuncId:
-				params, ok := casted.LoadInt(1).(*types.List)
-				returns, ok2 := casted.LoadInt(2).(*types.List)
-				if !(ok && ok2) {
-					return nil
-				}
-
-				typeCodes := extractTypes(params)
-				funcCode := jen.Func().Params(typeCodes...)
-
-				switch outputTypeIds := extractTypes(returns); len(outputTypeIds) {
-				case 0:
-					// no return
-					return funcCode
-				case 1:
-					// single return type
-					return funcCode.Add(outputTypeIds[0])
-				default:
-					return funcCode.Parens(jen.List(outputTypeIds...))
-				}
+		case names.EllipsisId, names.StarId, names.TildeId:
+			return jen.Op(string(op)).Add(extractType(casted.LoadInt(1)))
+		}
+	case 3:
+		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
+		case names.Dot, names.GetId:
+			return extractQualified(casted)
+		case names.LoadId:
+			return extractArrayOrGenType(casted.LoadInt(1), casted.LoadInt(2))
+		case names.MapId:
+			// manage map[t1]t2
+			return jen.Op(string(op)).Add(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
+		case names.FuncId:
+			params, ok := casted.LoadInt(1).(*types.List)
+			returns, ok2 := casted.LoadInt(2).(*types.List)
+			if !(ok && ok2) {
+				return nil
 			}
+
+			typeCodes, ok := extractTypes(params)
+			if !ok {
+				return nil
+			}
+
+			outputTypeIds, ok := extractTypes(returns)
+			if !ok {
+				return nil
+			}
+
+			funcCode := jen.Func().Params(typeCodes...)
+			switch len(outputTypeIds) {
+			case 0:
+				// no return
+				return funcCode
+			case 1:
+				// single return type
+				return funcCode.Add(outputTypeIds[0])
+			}
+			return funcCode.Parens(jen.List(outputTypeIds...))
+
 		}
 	}
 	return nil
@@ -177,16 +171,20 @@ func extractQualified(list *types.List) *jen.Statement {
 }
 
 // skip first elem (should be ListId)
-func extractTypes(typeIterable types.Iterable) []jen.Code {
+func extractTypes(typeIterable types.Iterable) ([]jen.Code, bool) {
 	itType := typeIterable.Iter() // no need to close (done in ForEach)
 	itType.Next()                 // skip ListId
 
+	noError := false
 	var typeCodes []jen.Code
 	types.ForEach(itType, func(elem types.Object) bool {
-		typeCodes = append(typeCodes, extractType(elem))
-		return true
+		typeCode := extractType(elem)
+		if noError = typeCode != nil; noError {
+			typeCodes = append(typeCodes, typeCode)
+		}
+		return noError
 	})
-	return typeCodes
+	return typeCodes, noError
 }
 
 // handle "a" as a,  "(* a)" as *a and ([] a b c) as a[b][c]

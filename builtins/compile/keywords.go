@@ -359,8 +359,9 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 	typeCode := jen.Type().Add(extractNameWithGenericDef(arg0))
 
-	if oldTypeId, ok := arg1.(types.Identifier); ok {
-		switch oldTypeId {
+	switch oldType := arg1.(type) {
+	case types.Identifier:
+		switch oldType {
 		case names.Interface:
 			var defCodes []jen.Code
 			types.ForEach(itArgs, func(elem types.Object) bool {
@@ -375,16 +376,23 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 					case names.LoadId:
 						if genTypes, ok := casted.LoadInt(2).(*types.List); ok {
 							// qualified type with generic parameter
-							typeCodes := extractTypes(genTypes)
+							typeCodes, _ := extractTypes(genTypes)
 							defCode = extractNameOrQualified(casted.LoadInt(1)).Types(typeCodes...)
 						}
 					case names.TildeId:
 						defCode = jen.Op(string(names.TildeId)).Add(extractType(casted.LoadInt(1)))
 					default:
 						// method description
-						paramCodes, ok := extractParameter(casted.LoadInt(1))
+						paramTypes, _ := casted.LoadInt(1).(*types.List)
+						// do not skip first (!= extractTypes)
+						var paramCodes []jen.Code
+						types.ForEach(paramTypes, func(elem types.Object) bool {
+							paramCodes = append(paramCodes, extractType(elem))
+							return true
+						})
+
 						defCode = jen.Id(string(casted2)).Params(paramCodes...)
-						if typeCode := extractType(casted.LoadInt(2)); ok && typeCode != nil {
+						if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
 							defCode.Add(typeCode)
 						}
 					}
@@ -393,11 +401,11 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 					switch header, _ := casted2.LoadInt(0).(types.Identifier); header {
 					case names.Dot, names.GetId:
 						// qualified name of another interface
-						defCode = extractQualified(casted)
+						defCode = extractQualified(casted2)
 					case names.LoadId:
 						if genTypes, ok := casted2.LoadInt(2).(*types.List); ok {
 							// qualified type with generic parameter
-							typeCodes := extractTypes(genTypes)
+							typeCodes, _ := extractTypes(genTypes)
 							defCode = extractNameOrQualified(casted2.LoadInt(1)).Types(typeCodes...)
 						}
 					case names.TildeId:
@@ -444,10 +452,12 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 			})
 			typeCode.Struct(defCodes...)
 		default:
-			typeCode.Id(string(oldTypeId))
+			typeCode.Id(string(oldType))
 		}
-	} else {
-		typeCode.Add(extractType(arg1))
+	case *types.List:
+		typeCode.Add(extractTypeFromList(oldType))
+	default:
+		return wrappedErrorComment
 	}
 	return wrapper{Renderer: typeCode.Line()}
 }

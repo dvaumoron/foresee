@@ -69,6 +69,7 @@ func (l *List) LoadInt(index int) Object {
 	return l.inner[index]
 }
 
+// No panic with nil receiver
 func (l *List) Load(key Object) Object {
 	switch casted := key.(type) {
 	case Integer:
@@ -76,25 +77,34 @@ func (l *List) Load(key Object) Object {
 	case Float:
 		return l.LoadInt(int(casted))
 	case *List:
+		if l == nil {
+			return &List{}
+		}
+
 		max := len(l.inner)
 		start, end := extractIndex(casted.inner, max)
-		if 0 <= start && start <= end && end <= max {
-			return &List{inner: l.inner[start:end]}
+		if 0 > start || start > end || end > max {
+			return &List{}
 		}
+		return &List{inner: l.inner[start:end]}
 	}
 	return None
 }
 
+// No panic with nil receiver
 func (l *List) Store(key Object, value Object) {
 	if integer, ok := key.(Integer); ok {
 		index := int(integer)
-		if index >= 0 && index < len(l.inner) {
+		if index >= 0 && index < l.Size() {
 			l.inner[index] = value
 		}
 	}
 }
 
 func (l *List) Size() int {
+	if l == nil {
+		return 0
+	}
 	return len(l.inner)
 }
 
@@ -123,9 +133,10 @@ func (it *listIterator) Next() (Object, bool) {
 	return inner[current], true
 }
 
-func (it *listIterator) Close() {
+func (*listIterator) Close() {
 }
 
+// No panic with nil receiver
 func (l *List) Iter() Iterator {
 	return &listIterator{list: l}
 }
@@ -143,11 +154,7 @@ func (l *List) Eval(env Environment) Object {
 	it := l.Iter()
 	defer it.Close()
 
-	firstElem, ok := it.Next()
-	if !ok {
-		return None
-	}
-
+	firstElem, _ := it.Next() // None is not an Appliable
 	appliable, ok := firstElem.Eval(env).(Appliable)
 	if !ok {
 		return None

@@ -72,25 +72,25 @@ func innerExtractParameter(paramIterable types.Iterable) ([]jen.Code, bool) {
 }
 
 func extractReturnType(env types.Environment, object types.Object) (*jen.Statement, []jen.Code) {
-	var returnCode *jen.Statement
-	var instructionCodes []jen.Code
 	switch casted := object.(type) {
 	case types.NoneType:
-		// optional marker for missing return type
+		return nil, nil
 	case types.Identifier:
-		returnCode = jen.Id(string(casted))
+		return jen.Id(string(casted)), nil
 	case *types.List:
 		if head, _ := casted.LoadInt(0).(types.Identifier); head == names.ListId {
-			typeCodes := extractTypes(casted)
-			returnCode = jen.Parens(jen.List(typeCodes...))
-		} else {
-			if returnCode = extractType(object); returnCode == nil {
-				// can not extract type, so object is the first instruction of the code block
-				instructionCodes = []jen.Code{compileToCode(env, object)}
+			if typeCodes, ok := extractTypes(casted); ok {
+				return jen.Parens(jen.List(typeCodes...)), nil
 			}
+		} else {
+			if returnCode := extractType(object); returnCode != nil {
+				return returnCode, nil
+			}
+			// can not extract type, so object is the first instruction of the code block
+			return nil, []jen.Code{compileToCode(env, object)}
 		}
 	}
-	return returnCode, instructionCodes
+	return nil, nil
 }
 
 func extractSingleOrMultiple(env types.Environment, list *types.List) []jen.Code {

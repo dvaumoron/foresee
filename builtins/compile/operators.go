@@ -128,7 +128,11 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
-		return wrappedErrorComment
+		return literalWrapper{Renderer: jen.Index().Add(extractType(arg0))}
+	}
+
+	if typeCode := extractArrayOrGenType(arg0, arg1); typeCode != nil {
+		return literalWrapper{Renderer: typeCode}
 	}
 
 	slice0 := extractSliceIndexes(env, arg1)
