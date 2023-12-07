@@ -25,18 +25,22 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 		return jen.Id(string(casted))
 	case *types.List:
 		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.LoadId {
-			itCasted := casted.Iter()
-			defer itCasted.Close()
-
-			itCasted.Next() // skip LoadId
-
-			name, _ := itCasted.Next()
-			nameId, ok := name.(types.Identifier)
+			nameId, ok := casted.LoadInt(1).(types.Identifier)
 			if !ok {
 				return nil
 			}
 
-			if genericCodes, noError := innerExtractParameter(itCasted); noError {
+			genDefList, ok := casted.LoadInt(2).(*types.List)
+			if !ok {
+				return nil
+			}
+
+			itGenDef := genDefList.Iter()
+			defer itGenDef.Close()
+
+			itGenDef.Next() // skip ListId
+
+			if genericCodes, noError := innerExtractParameter(itGenDef); noError {
 				return jen.Id(string(nameId)).Types(genericCodes...)
 			}
 		}
