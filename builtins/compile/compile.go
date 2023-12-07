@@ -106,7 +106,5 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Type, types.MakeNativeAppliable(typeForm))
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 	base.StoreStr(names.XorAssign, types.MakeNativeAppliable(bitwiseXOrAssignForm))
-
-	// TODO
 	return base
 }
