@@ -91,25 +91,13 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 	case 2:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 		case names.ArrowChanId:
-			typeCode := extractType(casted.LoadInt(1))
-			if typeCode != nil {
-				return jen.Op(names.Arrow).Chan().Add(typeCode)
-			}
+			return buildParameterizedType(jen.Op(names.Arrow).Chan(), casted)
 		case names.ChanArrowId:
-			typeCode := extractType(casted.LoadInt(1))
-			if typeCode != nil {
-				return jen.Chan().Op(names.Arrow).Add(typeCode)
-			}
+			return buildParameterizedType(jen.Chan().Op(names.Arrow), casted)
 		case names.ChanId:
-			typeCode := extractType(casted.LoadInt(1))
-			if typeCode != nil {
-				return jen.Chan().Add(typeCode)
-			}
+			return buildParameterizedType(jen.Chan(), casted)
 		case names.SliceId:
-			typeCode := extractType(casted.LoadInt(1))
-			if typeCode != nil {
-				return jen.Index().Add(typeCode)
-			}
+			return buildParameterizedType(jen.Index(), casted)
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
 			if !ok {
@@ -120,7 +108,7 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 				return jen.Func().Params(typeCodes...)
 			}
 		case names.EllipsisId, names.StarId, names.TildeId:
-			return jen.Op(string(op)).Add(extractType(casted.LoadInt(1)))
+			return buildParameterizedType(jen.Op(string(op)), casted)
 		}
 	case 3:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
@@ -173,6 +161,14 @@ func extractNameOrQualified(object types.Object) *jen.Statement {
 		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot || header == names.GetId {
 			return extractQualified(casted)
 		}
+	}
+	return nil
+}
+
+func buildParameterizedType(base *jen.Statement, list *types.List) *jen.Statement {
+	typeCode := extractType(list.LoadInt(1))
+	if typeCode != nil {
+		return base.Add(typeCode)
 	}
 	return nil
 }
