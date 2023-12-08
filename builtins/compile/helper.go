@@ -96,7 +96,7 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 			return jen.Chan().Op(names.Arrow).Add(extractType(casted.LoadInt(1)))
 		case names.ChanId:
 			return jen.Chan().Add(extractType(casted.LoadInt(1)))
-		case names.LoadId:
+		case names.SliceId:
 			return jen.Index().Add(extractType(casted.LoadInt(1)))
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
@@ -112,13 +112,6 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 		}
 	case 3:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
-		case names.Dot, names.GetId:
-			return extractQualified(casted)
-		case names.LoadId:
-			return extractArrayOrGenType(casted.LoadInt(1), casted.LoadInt(2))
-		case names.MapId:
-			// manage map[t1]t2
-			return jen.Map(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
 			returns, ok2 := casted.LoadInt(2).(*types.List)
@@ -146,7 +139,15 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 				return funcCode.Add(outputTypeIds[0])
 			}
 			return funcCode.Parens(jen.List(outputTypeIds...))
-
+		case names.GenId:
+			return extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+		case names.GetId:
+			return extractQualified(casted)
+		case names.MapId:
+			// manage map[t1]t2
+			return jen.Map(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
+		case names.SliceId:
+			return extractArrayType(casted.LoadInt(1), casted.LoadInt(2))
 		}
 	}
 	return nil
@@ -170,8 +171,7 @@ func extractQualified(list *types.List) *jen.Statement {
 	return jen.Id(string(packageId)).Dot(string(nameId))
 }
 
-// handle [size]type or type[typelist]
-func extractArrayOrGenType(arg0 types.Object, arg1 types.Object) *jen.Statement {
+func extractArrayType(arg0 types.Object, arg1 types.Object) *jen.Statement {
 	switch casted := arg0.(type) {
 	case types.Integer:
 		return jen.Index(jen.Lit(int(casted))).Add(extractType(arg1))
@@ -179,20 +179,17 @@ func extractArrayOrGenType(arg0 types.Object, arg1 types.Object) *jen.Statement 
 		if casted == names.EllipsisId {
 			// array type with automatic count
 			return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(arg1))
-		} else {
-			genTypes, _ := arg1.(*types.List)
-			// type with generic parameter
-			if typeCodes, ok := extractTypes(genTypes); ok {
-				return jen.Id(string(casted)).Types(typeCodes...)
-			}
 		}
-	case *types.List:
-		typeCode := extractType(casted)
-		genTypes, _ := arg1.(*types.List)
-		// qualified type with generic parameter
-		if typeCodes, ok := extractTypes(genTypes); typeCode != nil && ok {
-			return typeCode.Types(typeCodes...)
-		}
+	}
+	return nil
+}
+
+func extractGenType(arg0 types.Object, arg1 types.Object) *jen.Statement {
+	typeCode := extractType(arg0)
+	genTypes, _ := arg1.(*types.List)
+	// type with generic parameter
+	if typeCodes, ok := extractTypes(genTypes); typeCode != nil && ok {
+		return typeCode.Types(typeCodes...)
 	}
 	return nil
 }
@@ -227,7 +224,7 @@ func extractAssignTarget(env types.Environment, object types.Object) *jen.Statem
 
 func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.Statement {
 	switch op, _ := list.LoadInt(0).(types.Identifier); op {
-	case names.LoadId:
+	case names.Load:
 		it := list.Iter()
 		defer it.Close()
 

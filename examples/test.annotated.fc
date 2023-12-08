@@ -5,16 +5,16 @@ import
 
 	"github.com/dvaumoron/foresee/base"
 
-type guessed0[T0:any,T1:any] interface
+type guessed0<T0:any,T1:any> interface
 	Add(T0) T1
 
-type adder[T:base.Addable] struct
+type adder<T:base.Addable> struct
 	value T
 
-func NewAdder[T:base.Addable](a:T) *adder[T]
-	return (&adder[T] value:a) # equivalent to ((& ([] adder (list T))) (list value a)) as (& a b) will output "a & b"
+func NewAdder<T:base.Addable>(a:T) *adder<T>
+	return (&adder<T> value:a) # equivalent to ((& (gen adder (list T))) (list value a)) as (& a b) will output "a & b"
 
-func (a *adder[T]) Add(b:T) T # *adder[T] is equivalent to (* ([] adder (list T)))
+func (a *adder<T>) Add(b:T) T # *adder<T> is equivalent to (* (gen adder (list T)))
 	return (+ a.value b) # a.value is equivalent to (get a value)
 
 type adderInt struct
@@ -26,7 +26,7 @@ func MakeAdderInt(a:int) adderInt
 func (a adderInt) Add(b:int) int
     return (+ a.value b) 
 
-func Addition[T0:any,T1:any] (a:guessed0[T0,T1] b:T0) T1
+func Addition<T0:any,T1:any> (a:guessed0<T0,T1> b:T0) T1
 	return (. a Add b)
 
 func UseAdder() # no return

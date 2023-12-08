@@ -177,6 +177,15 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: funcCode.Block(instructionCodes...).Line()}
 }
 
+func genTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return literalWrapper{Renderer: extractGenType(arg0, arg1)}
+}
+
 func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, _ := itArgs.Next()
@@ -340,6 +349,15 @@ func selectForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: jen.Select().Block(caseCodes...)}
 }
 
+func sliceOrArrayTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return literalWrapper{Renderer: jen.Index().Add(extractType(arg0))}
+	}
+	return literalWrapper{Renderer: extractArrayType(arg0, arg1)}
+}
+
 func switchForm(env types.Environment, itArgs types.Iterator) types.Object {
 	var condCodes []jen.Code
 	if arg0, ok := itArgs.Next(); ok {
@@ -370,15 +388,11 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 				switch casted2 := casted.LoadInt(0).(type) {
 				case types.Identifier:
 					switch casted2 {
-					case names.Dot, names.GetId:
+					case names.GenId:
+						defCode = extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+					case names.GetId:
 						// qualified name of another interface
 						defCode = extractQualified(casted)
-					case names.LoadId:
-						if genTypes, ok := casted.LoadInt(2).(*types.List); ok {
-							// qualified type with generic parameter
-							typeCodes, _ := extractTypes(genTypes)
-							defCode = extractNameOrQualified(casted.LoadInt(1)).Types(typeCodes...)
-						}
 					case names.TildeId:
 						defCode = jen.Op(string(names.TildeId)).Add(extractType(casted.LoadInt(1)))
 					default:
@@ -405,15 +419,11 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 				case *types.List:
 					// land here with syntaxic sugar
 					switch header, _ := casted2.LoadInt(0).(types.Identifier); header {
-					case names.Dot, names.GetId:
+					case names.GenId:
+						defCode = extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+					case names.GetId:
 						// qualified name of another interface
 						defCode = extractQualified(casted2)
-					case names.LoadId:
-						if genTypes, ok := casted2.LoadInt(2).(*types.List); ok {
-							// qualified type with generic parameter
-							typeCodes, _ := extractTypes(genTypes)
-							defCode = extractNameOrQualified(casted2.LoadInt(1)).Types(typeCodes...)
-						}
 					case names.TildeId:
 						first := true
 						types.ForEach(casted, func(elem types.Object) bool {

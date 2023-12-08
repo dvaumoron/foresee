@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/dvaumoron/foresee/builtins/compile"
+	"github.com/dvaumoron/foresee/builtins/debug"
 	"github.com/dvaumoron/foresee/builtins/eval"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/infer"
@@ -108,6 +109,9 @@ func processFile(filePath string) {
 		fmt.Println("Error while infering", filePath, ":", err)
 		return
 	}
+
+	infered.Eval(debug.DebugEnvironment{}).Render(os.Stdout)
+	fmt.Println()
 
 	var outputdata bytes.Buffer
 	outputPath := computeOutputPath(filePath)

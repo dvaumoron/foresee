@@ -35,11 +35,11 @@ func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote,
 		// handle "...type", "~type", "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
-		// as (... type), (~ type), (& type), (* type), ([] n? type), (map t1 t2), (func typeList typeList2)
+		// as (... type), (~ type), (& type), (* type), (slice n? type), (map t1 t2), (func typeList typeList2)
 		// typeList format is "t1,t2" as (list t1 t2)
 		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
-		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "a:b:c", "a.b.c", "type[typeList]"
-		// as (<-chan type), (chan<- type), (chan type), (list a b c), ([] type typeList), (get a b c)
+		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "a:b:c", "type<typeList>", "a.b.c"
+		// as (<-chan type), (chan<- type), (chan type), (list a b c), (gen type typeList), (get a b c)
 		parseArrowChanType, parseChanArrowType, parseChanType, parseList, parseGenericType, parseDotField,
 	}
 }
@@ -129,7 +129,7 @@ func parseList(word string) (types.Object, bool) {
 	return parseListSep(word, ':', names.ListId)
 }
 
-// manage melting with string literal or nested square bracket
+// manage melting with string literal or nested generic
 func parseListSep(word string, sep rune, kindId types.Identifier) (types.Object, bool) {
 	chars := make(chan rune)
 	go sendChar(chars, word)
@@ -141,8 +141,8 @@ func parseListSep(word string, sep rune, kindId types.Identifier) (types.Object,
 		switch char {
 		case '"', '\'':
 			index = consumeString(chars, index, char)
-		case '[':
-			if index, errorB = consumeIndexed(chars, index); errorB {
+		case '<':
+			if index, errorB = consumeGen(chars, index); errorB {
 				return nil, false
 			}
 		case sep:
@@ -180,16 +180,16 @@ func consumeString(chars <-chan rune, index int, delim rune) int {
 }
 
 // true in the second returned value indicate an error
-func consumeIndexed(chars <-chan rune, index int) (int, bool) {
+func consumeGen(chars <-chan rune, index int) (int, bool) {
 	count := 1
 	for char := range chars {
 		index++
 		switch char {
 		case '"', '\'':
 			index = consumeString(chars, index, char)
-		case '[':
+		case '<':
 			count++
-		case ']':
+		case '>':
 			if count--; count == 0 {
 				return index, false
 			}
@@ -270,7 +270,7 @@ func parseArrayOrSliceType(word string) (types.Object, bool) {
 	if word[0] != '[' || index == -1 || len(word) == 2 || word == names.Store {
 		return nil, false
 	}
-	nodeList := types.NewList(names.LoadId)
+	nodeList := types.NewList(names.SliceId)
 	sizeNode := handleSubWord(word[1:index])
 	if _, ok := sizeNode.(types.NoneType); !ok {
 		nodeList.Add(sizeNode)
@@ -364,17 +364,15 @@ func handleTypeList(word string) types.Object {
 	return nodeList
 }
 
-// handle a[b,c] but not a[b][c]
 func parseGenericType(word string) (types.Object, bool) {
-	index := strings.IndexByte(word, '[')
+	index := strings.IndexByte(word, '<')
 	lastIndex := len(word) - 1
-	// test len to keep the basic identifier case
 	// (no need to test ':' (this rule is applied after parseList))
-	if index == -1 || lastIndex == 1 || word[lastIndex] != ']' {
+	if index == -1 || lastIndex == -1 || word[lastIndex] != '>' {
 		return nil, false
 	}
 
-	nodeList := types.NewList(names.LoadId)
+	nodeList := types.NewList(names.GenId)
 	nodeList.Add(handleSubWord(word[:index]))
 	nodeList.Add(handleTypeList(word[index+1 : lastIndex]))
 	return nodeList, true

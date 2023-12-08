@@ -128,11 +128,7 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
-		return literalWrapper{Renderer: jen.Index().Add(extractType(arg0))}
-	}
-
-	if typeCode := extractArrayOrGenType(arg0, arg1); typeCode != nil {
-		return literalWrapper{Renderer: typeCode}
+		return wrappedErrorComment
 	}
 
 	slice0 := extractSliceIndexes(env, arg1)
@@ -142,7 +138,7 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 		slicingCode.Index(sliceN...)
 		return true
 	})
-	// could be a generic function
+	// returned value could be callable
 	return callableWrapper{Renderer: slicingCode}
 }
 

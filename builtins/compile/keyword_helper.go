@@ -24,7 +24,7 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
-		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.LoadId {
+		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.GenId {
 			nameId, ok := casted.LoadInt(1).(types.Identifier)
 			if !ok {
 				return nil
