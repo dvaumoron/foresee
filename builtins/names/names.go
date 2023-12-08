@@ -94,6 +94,7 @@ const (
 	GenId       types.Identifier = "gen"
 	GetId       types.Identifier = "get"
 	ListId      types.Identifier = "list"
+	LitId       types.Identifier = "lit"
 	MapId       types.Identifier = "map"
 	SliceId     types.Identifier = "slice"
 	StarId      types.Identifier = "*"

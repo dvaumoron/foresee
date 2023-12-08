@@ -320,6 +320,14 @@ func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return callableWrapper{Renderer: funcCode.Block(instructionCodes...)}
 }
 
+func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return literalWrapper{Renderer: compileToCode(env, arg0)}
+}
+
 func packageForm(env types.Environment, itArgs types.Iterator) types.Object {
 	packageName, _ := itArgs.Next()
 	switch casted := packageName.(type) {

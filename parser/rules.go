@@ -33,14 +33,9 @@ type ConvertString = func(string) (types.Object, bool)
 // needed to prevent a cycle in the initialisation
 func init() {
 	wordParsers = []ConvertString{
-		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote,
-		// handle "...type", "~type", "&type", "*type", "[n]type", "map[t1]t2", "func[typeList]typeList2"
-		// as (... type), (~ type), (& type), (* type), (slice n? type), (map t1 t2), (func typeList typeList2)
-		// typeList format is "t1,t2" as (list t1 t2)
-		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrayOrSliceType, parseMapType, parseFuncType,
-		// handle "<-chan[type]", "chan<-[type]", "chan[type]", "a:b:c", "type<typeList>", "a.b.c"
-		// as (<-chan type), (chan<- type), (chan type), (list a b c), (gen type typeList), (get a b c)
-		parseArrowChanType, parseChanArrowType, parseChanType, parseList, parseGenericType, parseDotField,
+		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
+		parseArrowChanType, parseChanArrowType, parseChanType, parseGenericType, parseArrayOrSliceType, parseMapType, parseFuncType,
+		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseDotField,
 	}
 }
 
@@ -56,6 +51,8 @@ func AddCustomRule(rule types.Appliable) {
 	})
 }
 
+// try to apply parsing rule in order (including custom rules),
+// fallback to an identifier when nothing matches
 func HandleClassicWord(word string) types.Object {
 	for _, parser := range wordParsers {
 		if node, match := parser(word); match {
@@ -122,37 +119,56 @@ func parseRune(word string) (types.Object, bool) {
 	return types.Rune(extracted), true
 }
 
+// handle "a:b:c" as (list a b c)
+// (manage melting with string literal or nested part)
 func parseList(word string) (types.Object, bool) {
+	// exception for ":=
 	if word == names.DeclareAssign {
 		return nil, false
 	}
 	return parseListSep(word, ':', names.ListId)
 }
 
-// manage melting with string literal or nested generic
+// manage melting with string literal or nested part
 func parseListSep(word string, sep rune, kindId types.Identifier) (types.Object, bool) {
 	chars := make(chan rune)
 	go sendChar(chars, word)
 
 	index := 0
-	errorB := true
 	var indexes []int
+	var waiteds []rune
 	for char := range chars {
 		switch char {
 		case '"', '\'':
 			index = consumeString(chars, index, char)
 		case '<':
-			if index, errorB = consumeGen(chars, index); errorB {
-				return nil, false
+			waiteds = append(waiteds, '>')
+		case '[':
+			waiteds = append(waiteds, ']')
+		case '{':
+			waiteds = append(waiteds, '}')
+		case '>', ']', '}':
+			opennedLen := len(waiteds)
+			if opennedLen == 0 {
+				return nil, true
 			}
+
+			lastIndex := opennedLen - 1
+			if waiteds[lastIndex] != char {
+				return nil, false // non matching close
+			}
+			waiteds = waiteds[:lastIndex] // pop closed pair
 		case sep:
-			indexes = append(indexes, index)
+			if len(waiteds) == 0 {
+				indexes = append(indexes, index)
+			}
 		}
 		index++
 	}
-	if len(indexes) == 0 {
+	if len(indexes) == 0 || len(waiteds) != 0 {
 		return nil, false
 	}
+
 	nodeList := types.NewList(kindId)
 	startIndex := 0
 	for _, splitIndex := range indexes {
@@ -168,8 +184,7 @@ func consumeString(chars <-chan rune, index int, delim rune) int {
 		index++
 		switch char {
 		case delim:
-			// no need of unended string detection,
-			// this have already been tested in the word splitting part
+			// no need of unended string detection (already tested during word splitting)
 			break
 		case '\\':
 			<-chars
@@ -179,25 +194,7 @@ func consumeString(chars <-chan rune, index int, delim rune) int {
 	return index
 }
 
-// true in the second returned value indicate an error
-func consumeGen(chars <-chan rune, index int) (int, bool) {
-	count := 1
-	for char := range chars {
-		index++
-		switch char {
-		case '"', '\'':
-			index = consumeString(chars, index, char)
-		case '<':
-			count++
-		case '>':
-			if count--; count == 0 {
-				return index, false
-			}
-		}
-	}
-	return 0, true
-}
-
+// empty string are handled as None, otherwise call HandleClassicWord
 func handleSubWord(word string) types.Object {
 	if word == "" {
 		return types.None
@@ -215,55 +212,60 @@ func parseFloat(word string) (types.Object, bool) {
 	return types.Float(f), err == nil
 }
 
+// handle ",a" as (quote a)
 func parseUnquote(word string) (types.Object, bool) {
 	if word[0] != ',' {
 		return nil, false
 	}
-	nodeList := types.NewList(types.Identifier(names.UnquoteId))
-	nodeList.Add(handleSubWord(word[1:]))
-	return nodeList, true
+	return types.NewList(names.UnquoteId, handleSubWord(word[1:])), true
 }
 
+// handle "$type" as (lit type)
+// mark a type in order to use it as literal
+func parseLiteral(word string) (types.Object, bool) {
+	if word[0] != '$' {
+		return nil, false
+	}
+	return types.NewList(names.LitId, handleSubWord(word[1:])), true
+}
+
+// handle "...type" as (... type)
 func parseEllipsis(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if !strings.HasPrefix(word, string(names.EllipsisId)) || len(word) == 3 {
 		return nil, false
 	}
-	nodeList := types.NewList(names.EllipsisId)
-	nodeList.Add(handleSubWord(word[3:]))
-	return nodeList, true
+	return types.NewList(names.EllipsisId, handleSubWord(word[3:])), true
 }
 
+// handle "~type" as (~ type)
 func parseTilde(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '~' || len(word) == 1 {
 		return nil, false
 	}
-	nodeList := types.NewList(names.TildeId)
-	nodeList.Add(handleSubWord(word[1:]))
-	return nodeList, true
+	return types.NewList(names.TildeId, handleSubWord(word[1:])), true
 }
 
+// handle "&type" as (& type)
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '&' || len(word) == 1 || word == names.AndAssign || word == names.NotAndAssign {
 		return nil, false
 	}
-	nodeList := types.NewList(names.AmpersandId)
-	nodeList.Add(handleSubWord(word[1:]))
-	return nodeList, true
+	return types.NewList(names.AmpersandId, handleSubWord(word[1:])), true
 }
 
+// handle "*type" as (* type)
 func parseDereference(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '*' || len(word) == 1 || word == "*=" {
 		return nil, false
 	}
-	nodeList := types.NewList(names.StarId)
-	nodeList.Add(handleSubWord(word[1:]))
-	return nodeList, true
+	return types.NewList(names.StarId, handleSubWord(word[1:])), true
 }
 
+// handle "[n]type" or "[]type" as (slice n type) or (slice type)
 func parseArrayOrSliceType(word string) (types.Object, bool) {
 	index := strings.IndexByte(word, ']')
 	// test len to keep the basic identifier case
@@ -279,47 +281,44 @@ func parseArrayOrSliceType(word string) (types.Object, bool) {
 	return nodeList, true
 }
 
+// handle "map[t1]t2" as (map t1 t2)
 func parseMapType(word string) (types.Object, bool) {
 	index := strings.IndexByte(word, ']')
 	if !strings.HasPrefix(word, "map[") || index == -1 {
 		return nil, false
 	}
-	nodeList := types.NewList(names.MapId)
-	nodeList.Add(handleSubWord(word[4:index])) // can be *type
-	nodeList.Add(handleSubWord(word[index+1:]))
-	return nodeList, true
+	return types.NewList(names.MapId, handleSubWord(word[4:index]), handleSubWord(word[index+1:])), true
 }
 
+// handle "<-chan[type]" as (<-chan type)
 func parseArrowChanType(word string) (types.Object, bool) {
 	lastIndex := len(word) - 1
 	if !strings.HasPrefix(word, string("<-chan[")) || word[lastIndex] != ']' {
 		return nil, false
 	}
-	nodeList := types.NewList(names.ArrowChanId)
-	nodeList.Add(handleSubWord(word[7:lastIndex]))
-	return nodeList, true
+	return types.NewList(names.ArrowChanId, handleSubWord(word[7:lastIndex])), true
 }
 
+// handle "chan<-[type]" as (chan<- type)
 func parseChanArrowType(word string) (types.Object, bool) {
 	lastIndex := len(word) - 1
 	if !strings.HasPrefix(word, string("chan<-[")) || word[lastIndex] != ']' {
 		return nil, false
 	}
-	nodeList := types.NewList(names.ChanArrowId)
-	nodeList.Add(handleSubWord(word[7:lastIndex]))
-	return nodeList, true
+	return types.NewList(names.ChanArrowId, handleSubWord(word[7:lastIndex])), true
 }
 
+// handle "chan[type]" as (chan type)
 func parseChanType(word string) (types.Object, bool) {
 	lastIndex := len(word) - 1
 	if !strings.HasPrefix(word, string("chan[")) || word[lastIndex] != ']' {
 		return nil, false
 	}
-	nodeList := types.NewList(names.ChanId)
-	nodeList.Add(handleSubWord(word[5:lastIndex]))
-	return nodeList, true
+	return types.NewList(names.ChanId, handleSubWord(word[5:lastIndex])), true
 }
 
+// handle "func[typeList]typeList2" as (func typeList typeList2),
+// typeList format is "t1,t2" as (list t1 t2)
 func parseFuncType(word string) (types.Object, bool) {
 	if !strings.HasPrefix(word, string("func[")) || strings.IndexByte(word, ']') == -1 {
 		return nil, false
@@ -343,27 +342,24 @@ func parseFuncType(word string) (types.Object, bool) {
 		// incorrect syntax
 		return nil, false
 	}
-
-	nodeList := types.NewList(names.FuncId)
-	nodeList.Add(handleTypeList(word[5:index]))
-	nodeList.Add(handleTypeList(word[index+1:]))
-	return nodeList, true
+	return types.NewList(names.FuncId, handleTypeList(word[5:index]), handleTypeList(word[index+1:])), true
 }
 
+// always return a list with the ListId header
+// (manage melting with string literal or nested part)
 func handleTypeList(word string) types.Object {
-	nodeList := types.NewList(names.ListId)
 	if word == "" {
-		return nodeList
+		return types.NewList(names.ListId)
 	}
 
 	if res, ok := parseListSep(word, ',', names.ListId); ok {
 		return res
 	}
-
-	nodeList.Add(HandleClassicWord(word))
-	return nodeList
+	return types.NewList(names.ListId, HandleClassicWord(word))
 }
 
+// handle "type<typeList>" as (gen type typeList)
+// typeList format is "t1,t2" as (list t1 t2) where t1 and t2 can be any node (including "name:type" format)
 func parseGenericType(word string) (types.Object, bool) {
 	index := strings.IndexByte(word, '<')
 	lastIndex := len(word) - 1
@@ -371,13 +367,11 @@ func parseGenericType(word string) (types.Object, bool) {
 	if index == -1 || lastIndex == -1 || word[lastIndex] != '>' {
 		return nil, false
 	}
-
-	nodeList := types.NewList(names.GenId)
-	nodeList.Add(handleSubWord(word[:index]))
-	nodeList.Add(handleTypeList(word[index+1 : lastIndex]))
-	return nodeList, true
+	return types.NewList(names.GenId, handleSubWord(word[:index]), handleTypeList(word[index+1:lastIndex])), true
 }
 
+// handle "a.b.c" as (get a b c)
+// (manage melting with string literal or nested part)
 func parseDotField(word string) (types.Object, bool) {
 	if word == names.Dot {
 		return nil, false

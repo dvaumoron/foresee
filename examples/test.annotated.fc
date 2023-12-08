@@ -21,7 +21,7 @@ type adderInt struct
     value int
 
 func MakeAdderInt(a:int) adderInt
-	return (adderInt value:a)
+	return ($adderInt value:a) # the $ flag adderInt as a type (when not inferred) 
 
 func (a adderInt) Add(b:int) int
     return (+ a.value b) 
