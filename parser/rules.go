@@ -34,8 +34,8 @@ type ConvertString = func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
-		parseArrowChanType, parseChanArrowType, parseChanType, parseGenericType, parseArrayOrSliceType, parseMapType, parseFuncType,
-		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseDotField,
+		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrowChanType, parseChanArrowType, parseChanType,
+		parseGenericType, parseArrayOrSliceType, parseMapType, parseFuncType, parseDotField,
 	}
 }
 
