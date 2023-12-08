@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	wrappedErrorComment = wrapper{Renderer: jen.Comment("line with error, can't generate correct go code").Line()}
+	wrappedErrorComment = wrapper{Renderer: jen.Comment("/* encounter errors, can't generate correct go code */")}
 
 	Builtins = initBuitins()
 )
