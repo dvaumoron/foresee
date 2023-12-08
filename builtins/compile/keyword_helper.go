@@ -21,12 +21,6 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-func extractPackageName(path types.String) string {
-	casted := string(path)
-	splitIndex := strings.LastIndexByte(casted, '/') + 1 // 0 when not found, so splitting do nothing
-	return casted[splitIndex:]
-}
-
 func extractNameWithGenericDef(env types.Environment, object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
@@ -54,6 +48,12 @@ func extractNameWithGenericDef(env types.Environment, object types.Object) *jen.
 		}
 	}
 	return nil
+}
+
+func extractPackageName(path types.String) string {
+	casted := string(path)
+	splitIndex := strings.LastIndexByte(casted, '/') + 1 // 0 when not found, so splitting do nothing
+	return casted[splitIndex:]
 }
 
 func extractParameter(env types.Environment, object types.Object) ([]jen.Code, bool) {
