@@ -79,6 +79,7 @@ func parseString(word string) (types.Object, bool) {
 	if word[0] != '"' || word[lastIndex] != '"' {
 		return nil, false
 	}
+
 	escape := false
 	extracted := make([]rune, 0, lastIndex)
 	for _, char := range word[1:lastIndex] {
@@ -108,6 +109,7 @@ func parseRune(word string) (types.Object, bool) {
 	if word[0] != '\'' || word[lastIndex] != '\'' {
 		return nil, false
 	}
+
 	var extracted rune
 	for _, char := range word[1:lastIndex] {
 		if char == '\\' {
@@ -185,7 +187,7 @@ func consumeString(chars <-chan rune, index int, delim rune) int {
 		switch char {
 		case delim:
 			// no need of unended string detection (already tested during word splitting)
-			break
+			return index
 		case '\\':
 			<-chars
 			index++
