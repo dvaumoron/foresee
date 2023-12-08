@@ -181,12 +181,15 @@ func extractQualified(env types.Environment, arg0 types.Object, arg1 types.Objec
 		imports, _ := env.LoadStr(hiddenImportsName)
 		castedImport, _ := imports.(types.BaseEnvironment)
 		path, ok := castedImport.LoadStr(string(casted))
-		if !ok {
-			return nil // not a type
+		if ok {
+			castedPath, _ := path.(types.String)
+			packagePath = string(castedPath)
+			break
 		}
 
-		castedPath, _ := path.(types.String)
-		packagePath = string(castedPath)
+		if packagePath, ok = knownLibrary[string(casted)]; !ok {
+			return nil // not a type
+		}
 	case types.String:
 		packagePath = string(casted)
 	default:

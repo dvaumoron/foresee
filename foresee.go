@@ -35,6 +35,8 @@ const (
 	fileExtLen = len(fileExt)
 )
 
+//go:generate gennames -output "builtins/compile/hints.go" -package "compile" -name "standardLibraryHints" -standard -novendor -path "./..."
+
 func main() {
 	if !loadGoMod() {
 		return
