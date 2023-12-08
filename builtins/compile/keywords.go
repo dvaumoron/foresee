@@ -25,7 +25,7 @@ func assertForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if !ok {
 		return wrappedErrorComment
 	}
-	return wrapper{Renderer: compileToCode(env, arg0).Assert(extractType(arg1))}
+	return wrapper{Renderer: compileToCode(env, arg0).Assert(extractType(env, arg1))}
 }
 
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -78,7 +78,7 @@ func fallthroughForm(env types.Environment, itArgs types.Iterator) types.Object 
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// init default value
 	env.StoreStr(hiddenPackageName, mainId)
-	env.StoreStr(hiddenImportsName, types.NewList())
+	env.StoreStr(hiddenImportsName, types.MakeBaseEnvironment())
 
 	codes := compileToCodeSlice(env, itArgs)
 
@@ -89,17 +89,14 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	jenFile.Add(codes...)
 
 	imports, _ := env.LoadStr(hiddenImportsName)
-	importList, _ := imports.(*types.List)
-	types.ForEach(importList, func(importDesc types.Object) bool {
+	castedImport, _ := imports.(types.BaseEnvironment)
+	types.ForEach(castedImport, func(importDesc types.Object) bool {
 		casted, _ := importDesc.(*types.List)
-		name, _ := casted.LoadInt(0).(types.Identifier)
+		name, _ := casted.LoadInt(0).(types.String)
 		path, _ := casted.LoadInt(1).(types.String)
-		switch name {
-		case "_":
+		if name == "_" {
 			jenFile.Anon(string(path))
-		case "":
-			jenFile.ImportName(string(path), "")
-		default:
+		} else {
 			jenFile.ImportAlias(string(path), string(name))
 		}
 		return true
@@ -137,7 +134,7 @@ func forForm(env types.Environment, itArgs types.Iterator) types.Object {
 func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	funcCode := jen.Func()
-	if nameCode := extractNameWithGenericDef(arg0); nameCode == nil {
+	if nameCode := extractNameWithGenericDef(env, arg0); nameCode == nil {
 		casted, ok := arg0.(*types.List)
 		if !ok {
 			return wrappedErrorComment
@@ -146,9 +143,9 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 		var receiverCode *jen.Statement
 		if casted.Size() > 1 {
 			receiverId, _ := casted.LoadInt(0).(types.Identifier)
-			receiverCode = jen.Id(string(receiverId)).Add(extractType(casted.LoadInt(1)))
+			receiverCode = jen.Id(string(receiverId)).Add(extractType(env, casted.LoadInt(1)))
 		} else {
-			receiverCode = extractType(casted.LoadInt(0))
+			receiverCode = extractType(env, casted.LoadInt(0))
 		}
 
 		arg1, _ := itArgs.Next()
@@ -159,7 +156,7 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	}
 
 	params, _ := itArgs.Next()
-	paramCodes, ok := extractParameter(params)
+	paramCodes, ok := extractParameter(env, params)
 	if !ok {
 		return wrappedErrorComment
 	}
@@ -183,7 +180,7 @@ func genTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if !ok {
 		return wrappedErrorComment
 	}
-	return literalWrapper{Renderer: extractGenType(arg0, arg1)}
+	return literalWrapper{Renderer: extractGenType(env, arg0, arg1)}
 }
 
 func getForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -194,7 +191,11 @@ func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 		return wrappedErrorComment
 	}
 
-	getCode := compileToCode(env, arg0).Dot(string(fieldId))
+	getCode := extractQualified(env, arg0, arg1)
+	if getCode == nil {
+		getCode = compileToCode(env, arg0).Dot(string(fieldId))
+	}
+
 	types.ForEach(itArgs, func(elem types.Object) bool {
 		fieldId, _ := elem.(types.Identifier)
 		getCode.Dot(string(fieldId))
@@ -270,21 +271,23 @@ func ifForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func importForm(env types.Environment, itArgs types.Iterator) types.Object {
 	imports, _ := env.LoadStr(hiddenImportsName)
-	importList, _ := imports.(*types.List)
+	castedImport, _ := imports.(types.BaseEnvironment)
 	types.ForEach(itArgs, func(importDesc types.Object) bool {
 		switch casted := importDesc.(type) {
 		case *types.List:
 			if casted.Size() > 1 {
-				importList.Add(casted)
+				packageId, _ := casted.LoadInt(1).(types.Identifier)
+				castedImport.StoreStr(string(packageId), casted.LoadInt(1))
 			} else {
-				importList.Add(types.NewList(types.Identifier(""), casted.LoadInt(0)))
+				path, _ := casted.LoadInt(0).(types.String)
+				castedImport.StoreStr(extractPackageName(path), path)
 			}
 			return true
 		case types.Identifier:
 			path, _ := itArgs.Next()
-			importList.Add(types.NewList(casted, path))
+			castedImport.StoreStr(string(casted), path)
 		case types.String:
-			importList.Add(types.NewList(types.Identifier(""), casted))
+			castedImport.StoreStr(extractPackageName(casted), casted)
 		}
 		return false // onliner cases so break
 	})
@@ -302,7 +305,7 @@ func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	paramCodes, ok := extractParameter(arg0)
+	paramCodes, ok := extractParameter(env, arg0)
 	if !ok {
 		return wrappedErrorComment
 	}
@@ -361,14 +364,14 @@ func sliceOrArrayTypeForm(env types.Environment, itArgs types.Iterator) types.Ob
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if ok {
-		typeCode := extractArrayType(arg0, arg1)
+		typeCode := extractArrayType(env, arg0, arg1)
 		if typeCode == nil {
 			return wrappedErrorComment
 		}
 		return literalWrapper{Renderer: typeCode}
 	}
 
-	typeCode := extractType(arg0)
+	typeCode := extractType(env, arg0)
 	if typeCode == nil {
 		return wrappedErrorComment
 	}
@@ -392,7 +395,7 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 		return wrappedErrorComment
 	}
 
-	typeCode := jen.Type().Add(extractNameWithGenericDef(arg0))
+	typeCode := jen.Type().Add(extractNameWithGenericDef(env, arg0))
 
 	switch oldType := arg1.(type) {
 	case types.Identifier:
@@ -406,30 +409,30 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 				case types.Identifier:
 					switch casted2 {
 					case names.GenId:
-						defCode = extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+						defCode = extractGenType(env, casted.LoadInt(1), casted.LoadInt(2))
 					case names.GetId:
 						// qualified name of another interface
-						defCode = extractQualified(casted)
+						defCode = extractQualified(env, casted.LoadInt(1), casted.LoadInt(2))
 					case names.TildeId:
-						defCode = jen.Op(string(names.TildeId)).Add(extractType(casted.LoadInt(1)))
+						defCode = jen.Op(string(names.TildeId)).Add(extractType(env, casted.LoadInt(1)))
 					default:
 						// method description
 						paramTypes, _ := casted.LoadInt(1).(*types.List)
 						var paramCodes []jen.Code
 						// handle type or name:type
 						types.ForEach(paramTypes, func(elem types.Object) bool {
-							typeCode := extractType(elem)
+							typeCode := extractType(env, elem)
 							if typeCode == nil {
 								casted, _ := elem.(*types.List)
 								paramId, _ := casted.LoadInt(1).(types.Identifier)
-								typeCode = jen.Id(string(paramId)).Add(extractType(casted.LoadInt(2)))
+								typeCode = jen.Id(string(paramId)).Add(extractType(env, casted.LoadInt(2)))
 							}
 							paramCodes = append(paramCodes, typeCode)
 							return true
 						})
 
 						defCode = jen.Id(string(casted2)).Params(paramCodes...)
-						if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+						if typeCode := extractType(env, casted.LoadInt(2)); typeCode != nil {
 							defCode.Add(typeCode)
 						}
 					}
@@ -437,19 +440,19 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 					// land here with syntaxic sugar
 					switch header, _ := casted2.LoadInt(0).(types.Identifier); header {
 					case names.GenId:
-						defCode = extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+						defCode = extractGenType(env, casted.LoadInt(1), casted.LoadInt(2))
 					case names.GetId:
 						// qualified name of another interface
-						defCode = extractQualified(casted2)
+						defCode = extractQualified(env, casted2.LoadInt(1), casted2.LoadInt(2))
 					case names.TildeId:
 						first := true
 						types.ForEach(casted, func(elem types.Object) bool {
 							casted3, _ := elem.(*types.List)
-							if first {
+							if typeCode := extractType(env, casted3.LoadInt(1)); first {
 								first = false
-								defCode = jen.Op(string(names.TildeId)).Add(extractType(casted3.LoadInt(1)))
+								defCode = jen.Op(string(names.TildeId)).Add(typeCode)
 							} else {
-								defCode.Op(names.Pipe).Op(string(names.TildeId)).Add(extractType(casted3.LoadInt(1)))
+								defCode.Op(names.Pipe).Op(string(names.TildeId)).Add(typeCode)
 							}
 							return true // handle several by line
 						})
@@ -469,12 +472,12 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 				castedSize := casted.Size()
 				if castedSize == 1 {
 					// nested type
-					defCodes = append(defCodes, extractType(casted.LoadInt(0)))
+					defCodes = append(defCodes, extractType(env, casted.LoadInt(0)))
 					return true
 				}
 
 				fieldId, _ := casted.LoadInt(0).(types.Identifier)
-				defCode := jen.Id(string(fieldId)).Add(extractType(casted.LoadInt(1)))
+				defCode := jen.Id(string(fieldId)).Add(extractType(env, casted.LoadInt(1)))
 				if castedSize > 2 {
 					itemList, _ := elem.(*types.List)
 					items := map[string]string{}
@@ -495,7 +498,7 @@ func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
 			typeCode.Id(string(oldType))
 		}
 	case *types.List:
-		typeCode.Add(extractTypeFromList(oldType))
+		typeCode.Add(extractTypeFromList(env, oldType))
 	default:
 		return wrappedErrorComment
 	}

@@ -197,7 +197,7 @@ func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.
 		return wrapper{Renderer: compileToCode(env, arg0).Op(names.Arrow).Add(compileToCode(env, arg1))}
 	}
 
-	targetCode := Renderer(extractType(arg0))
+	targetCode := Renderer(extractType(env, arg0))
 	if targetCode == nil {
 		targetCode = compileToCode(env, arg0)
 	}

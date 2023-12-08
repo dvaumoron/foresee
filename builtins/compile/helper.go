@@ -76,39 +76,39 @@ func emptyCode(object types.Object) Renderer {
 
 // handle *type, []type, map[t1]t2, t1[t2,t3] format and func or chan types  (and their combinations like [][]*type)
 // TODO manage anonymous struct ?
-func extractType(object types.Object) *jen.Statement {
+func extractType(env types.Environment, object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
-		return extractTypeFromList(casted)
+		return extractTypeFromList(env, casted)
 	}
 	return nil
 }
 
-func extractTypeFromList(casted *types.List) *jen.Statement {
+func extractTypeFromList(env types.Environment, casted *types.List) *jen.Statement {
 	switch casted.Size() {
 	case 2:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 		case names.ArrowChanId:
-			return buildParameterizedType(jen.Op(names.Arrow).Chan(), casted)
+			return buildParameterizedType(env, jen.Op(names.Arrow).Chan(), casted)
 		case names.ChanArrowId:
-			return buildParameterizedType(jen.Chan().Op(names.Arrow), casted)
+			return buildParameterizedType(env, jen.Chan().Op(names.Arrow), casted)
 		case names.ChanId:
-			return buildParameterizedType(jen.Chan(), casted)
+			return buildParameterizedType(env, jen.Chan(), casted)
 		case names.SliceId:
-			return buildParameterizedType(jen.Index(), casted)
+			return buildParameterizedType(env, jen.Index(), casted)
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
 			if !ok {
 				return nil
 			}
 
-			if typeCodes, ok := extractTypes(params); ok {
+			if typeCodes, ok := extractTypes(env, params); ok {
 				return jen.Func().Params(typeCodes...)
 			}
 		case names.EllipsisId, names.StarId, names.TildeId:
-			return buildParameterizedType(jen.Op(string(op)), casted)
+			return buildParameterizedType(env, jen.Op(string(op)), casted)
 		}
 	case 3:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
@@ -119,12 +119,12 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 				return nil
 			}
 
-			typeCodes, ok := extractTypes(params)
+			typeCodes, ok := extractTypes(env, params)
 			if !ok {
 				return nil
 			}
 
-			outputTypeIds, ok := extractTypes(returns)
+			outputTypeIds, ok := extractTypes(env, returns)
 			if !ok {
 				return nil
 			}
@@ -140,77 +140,93 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 			}
 			return funcCode.Parens(jen.List(outputTypeIds...))
 		case names.GenId:
-			return extractGenType(casted.LoadInt(1), casted.LoadInt(2))
+			return extractGenType(env, casted.LoadInt(1), casted.LoadInt(2))
 		case names.GetId:
-			return extractQualified(casted)
+			return extractQualified(env, casted.LoadInt(1), casted.LoadInt(2))
 		case names.MapId:
 			// manage map[t1]t2
-			return jen.Map(extractType(casted.LoadInt(1))).Add(extractType(casted.LoadInt(2)))
+			return jen.Map(extractType(env, casted.LoadInt(1))).Add(extractType(env, casted.LoadInt(2)))
 		case names.SliceId:
-			return extractArrayType(casted.LoadInt(1), casted.LoadInt(2))
+			return extractArrayType(env, casted.LoadInt(1), casted.LoadInt(2))
 		}
 	}
 	return nil
 }
 
-func extractNameOrQualified(object types.Object) *jen.Statement {
+func extractNameOrQualified(env types.Environment, object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
 	case *types.List:
 		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.Dot || header == names.GetId {
-			return extractQualified(casted)
+			return extractQualified(env, casted.LoadInt(1), casted.LoadInt(2))
 		}
 	}
 	return nil
 }
 
-func buildParameterizedType(base *jen.Statement, list *types.List) *jen.Statement {
-	typeCode := extractType(list.LoadInt(1))
+func buildParameterizedType(env types.Environment, base *jen.Statement, list *types.List) *jen.Statement {
+	typeCode := extractType(env, list.LoadInt(1))
 	if typeCode != nil {
 		return base.Add(typeCode)
 	}
 	return nil
 }
 
-func extractQualified(list *types.List) *jen.Statement {
-	packageId, _ := list.LoadInt(1).(types.Identifier)
-	nameId, _ := list.LoadInt(2).(types.Identifier)
-	return jen.Id(string(packageId)).Dot(string(nameId))
+func extractQualified(env types.Environment, arg0 types.Object, arg1 types.Object) *jen.Statement {
+	packagePath := ""
+	nameId, _ := arg1.(types.Identifier)
+	switch casted := arg0.(type) {
+	case types.Identifier:
+		imports, _ := env.LoadStr(hiddenImportsName)
+		castedImport, _ := imports.(types.BaseEnvironment)
+		path, ok := castedImport.LoadStr(string(casted))
+		if !ok {
+			return nil // not a type
+		}
+
+		castedPath, _ := path.(types.String)
+		packagePath = string(castedPath)
+	case types.String:
+		packagePath = string(casted)
+	default:
+		return nil // not a type
+	}
+	return jen.Qual(string(packagePath), string(nameId))
 }
 
-func extractArrayType(arg0 types.Object, arg1 types.Object) *jen.Statement {
+func extractArrayType(env types.Environment, arg0 types.Object, arg1 types.Object) *jen.Statement {
 	switch casted := arg0.(type) {
 	case types.Integer:
-		return jen.Index(jen.Lit(int(casted))).Add(extractType(arg1))
+		return jen.Index(jen.Lit(int(casted))).Add(extractType(env, arg1))
 	case types.Identifier:
 		if casted == names.EllipsisId {
 			// array type with automatic count
-			return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(arg1))
+			return jen.Index(jen.Op(string(names.EllipsisId))).Add(extractType(env, arg1))
 		}
 	}
 	return nil
 }
 
-func extractGenType(arg0 types.Object, arg1 types.Object) *jen.Statement {
-	typeCode := extractType(arg0)
+func extractGenType(env types.Environment, arg0 types.Object, arg1 types.Object) *jen.Statement {
+	typeCode := extractType(env, arg0)
 	genTypes, _ := arg1.(*types.List)
 	// type with generic parameter
-	if typeCodes, ok := extractTypes(genTypes); typeCode != nil && ok {
+	if typeCodes, ok := extractTypes(env, genTypes); typeCode != nil && ok {
 		return typeCode.Types(typeCodes...)
 	}
 	return nil
 }
 
 // skip first elem (should be ListId)
-func extractTypes(typeIterable types.Iterable) ([]jen.Code, bool) {
+func extractTypes(env types.Environment, typeIterable types.Iterable) ([]jen.Code, bool) {
 	itType := typeIterable.Iter() // no need to close (done in ForEach)
 	itType.Next()                 // skip ListId
 
 	noError := false
 	var typeCodes []jen.Code
 	types.ForEach(itType, func(elem types.Object) bool {
-		typeCode := extractType(elem)
+		typeCode := extractType(env, elem)
 		if noError = typeCode != nil; noError {
 			typeCodes = append(typeCodes, typeCode)
 		}

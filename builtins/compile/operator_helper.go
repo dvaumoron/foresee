@@ -136,7 +136,7 @@ func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterat
 
 	valueCodesTemp := compileToCodeSlice(env, itArgs)
 	if len(valueCodesTemp) == 0 {
-		targetCode := Renderer(extractType(arg0))
+		targetCode := Renderer(extractType(env, arg0))
 		if targetCode == nil {
 			targetCode = compileToCode(env, arg0)
 		}

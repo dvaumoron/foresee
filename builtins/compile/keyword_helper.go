@@ -14,12 +14,20 @@
 package compile
 
 import (
+	"strings"
+
 	"github.com/dave/jennifer/jen"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
-func extractNameWithGenericDef(object types.Object) *jen.Statement {
+func extractPackageName(path types.String) string {
+	casted := string(path)
+	splitIndex := strings.LastIndexByte(casted, '/') + 1 // 0 when not found, so splitting do nothing
+	return casted[splitIndex:]
+}
+
+func extractNameWithGenericDef(env types.Environment, object types.Object) *jen.Statement {
 	switch casted := object.(type) {
 	case types.Identifier:
 		return jen.Id(string(casted))
@@ -40,7 +48,7 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 
 			itGenDef.Next() // skip ListId
 
-			if genericCodes, noError := innerExtractParameter(itGenDef); noError {
+			if genericCodes, noError := innerExtractParameter(env, itGenDef); noError {
 				return jen.Id(string(nameId)).Types(genericCodes...)
 			}
 		}
@@ -48,15 +56,15 @@ func extractNameWithGenericDef(object types.Object) *jen.Statement {
 	return nil
 }
 
-func extractParameter(object types.Object) ([]jen.Code, bool) {
+func extractParameter(env types.Environment, object types.Object) ([]jen.Code, bool) {
 	paramIterable, ok := object.(types.Iterable)
 	if !ok {
 		return nil, false
 	}
-	return innerExtractParameter(paramIterable)
+	return innerExtractParameter(env, paramIterable)
 }
 
-func innerExtractParameter(paramIterable types.Iterable) ([]jen.Code, bool) {
+func innerExtractParameter(env types.Environment, paramIterable types.Iterable) ([]jen.Code, bool) {
 	noError := true
 	var paramCodes []jen.Code
 	types.ForEach(paramIterable, func(elem types.Object) bool {
@@ -64,7 +72,7 @@ func innerExtractParameter(paramIterable types.Iterable) ([]jen.Code, bool) {
 		// assume it's in "name:type" format (type should be inferred if not declared)
 		if paramDesc, noError = elem.(*types.List); noError {
 			varId, _ := paramDesc.LoadInt(1).(types.Identifier)
-			paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(paramDesc.LoadInt(2))))
+			paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(env, paramDesc.LoadInt(2))))
 		}
 		return noError
 	})
@@ -79,11 +87,11 @@ func extractReturnType(env types.Environment, object types.Object) (*jen.Stateme
 		return jen.Id(string(casted)), nil
 	case *types.List:
 		if head, _ := casted.LoadInt(0).(types.Identifier); head == names.ListId {
-			if typeCodes, ok := extractTypes(casted); ok {
+			if typeCodes, ok := extractTypes(env, casted); ok {
 				return jen.Parens(jen.List(typeCodes...)), nil
 			}
 		} else {
-			if returnCode := extractType(object); returnCode != nil {
+			if returnCode := extractType(env, object); returnCode != nil {
 				return returnCode, nil
 			}
 			// can not extract type, so object is the first instruction of the code block
@@ -134,7 +142,7 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 		if header, _ := casted.LoadInt(0).(types.Identifier); header == names.ListId {
 			nameId, _ := casted.LoadInt(1).(types.Identifier)
 			baseCode.Id(string(nameId))
-			if typeCode := extractType(casted.LoadInt(2)); typeCode != nil {
+			if typeCode := extractType(env, casted.LoadInt(2)); typeCode != nil {
 				baseCode.Add(typeCode)
 			}
 			if arg1, ok := itArgs.Next(); ok {
@@ -170,7 +178,7 @@ func processDefLine(env types.Environment, defDesc *types.List) jen.Code {
 		defCode = jen.Id(string(casted))
 	case *types.List:
 		nameId, _ := casted.LoadInt(1).(types.Identifier)
-		defCode = jen.Id(string(nameId)).Add(extractType(casted.LoadInt(2)))
+		defCode = jen.Id(string(nameId)).Add(extractType(env, casted.LoadInt(2)))
 	}
 	if defDesc.Size() > 1 {
 		defCode.Op(names.Assign).Add(compileToCode(env, defDesc.LoadInt(1)))
