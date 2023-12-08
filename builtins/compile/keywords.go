@@ -352,10 +352,19 @@ func selectForm(env types.Environment, itArgs types.Iterator) types.Object {
 func sliceOrArrayTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
-	if !ok {
-		return literalWrapper{Renderer: jen.Index().Add(extractType(arg0))}
+	if ok {
+		typeCode := extractArrayType(arg0, arg1)
+		if typeCode == nil {
+			return wrappedErrorComment
+		}
+		return literalWrapper{Renderer: typeCode}
 	}
-	return literalWrapper{Renderer: extractArrayType(arg0, arg1)}
+
+	typeCode := extractType(arg0)
+	if typeCode == nil {
+		return wrappedErrorComment
+	}
+	return literalWrapper{Renderer: jen.Index().Add(typeCode)}
 }
 
 func switchForm(env types.Environment, itArgs types.Iterator) types.Object {

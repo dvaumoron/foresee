@@ -91,13 +91,25 @@ func extractTypeFromList(casted *types.List) *jen.Statement {
 	case 2:
 		switch op, _ := casted.LoadInt(0).(types.Identifier); op {
 		case names.ArrowChanId:
-			return jen.Op(names.Arrow).Chan().Add(extractType(casted.LoadInt(1)))
+			typeCode := extractType(casted.LoadInt(1))
+			if typeCode != nil {
+				return jen.Op(names.Arrow).Chan().Add(typeCode)
+			}
 		case names.ChanArrowId:
-			return jen.Chan().Op(names.Arrow).Add(extractType(casted.LoadInt(1)))
+			typeCode := extractType(casted.LoadInt(1))
+			if typeCode != nil {
+				return jen.Chan().Op(names.Arrow).Add(typeCode)
+			}
 		case names.ChanId:
-			return jen.Chan().Add(extractType(casted.LoadInt(1)))
+			typeCode := extractType(casted.LoadInt(1))
+			if typeCode != nil {
+				return jen.Chan().Add(typeCode)
+			}
 		case names.SliceId:
-			return jen.Index().Add(extractType(casted.LoadInt(1)))
+			typeCode := extractType(casted.LoadInt(1))
+			if typeCode != nil {
+				return jen.Index().Add(typeCode)
+			}
 		case names.FuncId:
 			params, ok := casted.LoadInt(1).(*types.List)
 			if !ok {
