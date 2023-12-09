@@ -36,17 +36,3 @@ func UseAdder() # no return
 	:= (c d) 1 2
 
 	fmt.Println "Result 2 is" (Addition (MakeAdderInt c) d)
-
-	:= m (map[int64]string 42:"response")
-
-	fmt.Println "Result 3 is" m
-
-	:= s ([]int 1 2 3)
-
-	fmt.Println "Result 4 is" s
-
-	:= printI 
-		lambda (i:int)
-			fmt.Println "Result 5 is" i
-
-	go (printI 4)
