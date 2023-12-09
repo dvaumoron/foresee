@@ -84,6 +84,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Load, types.MakeNativeAppliable(indexOrSliceForm))
 	base.StoreStr(names.LShift, types.MakeNativeAppliable(leftShiftForm))
 	base.StoreStr(names.LShiftAssign, types.MakeNativeAppliable(leftShiftAssignForm))
+	base.StoreStr(string(names.MapId), types.MakeNativeAppliable(mapTypeForm))
 	base.StoreStr(names.Minus, types.MakeNativeAppliable(substractionForm))
 	base.StoreStr(names.ModAssign, types.MakeNativeAppliable(moduloAssignForm))
 	base.StoreStr(names.MultAssign, types.MakeNativeAppliable(multiplyAssignForm))

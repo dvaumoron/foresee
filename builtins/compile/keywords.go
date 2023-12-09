@@ -328,7 +328,16 @@ func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if !ok {
 		return wrappedErrorComment
 	}
-	return literalWrapper{Renderer: compileToCode(env, arg0)}
+	return literalWrapper{Renderer: extractType(env, arg0)}
+}
+
+func mapTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		return wrappedErrorComment
+	}
+	return literalWrapper{Renderer: jen.Map(extractType(env, arg0)).Add(extractType(env, arg1))}
 }
 
 func packageForm(env types.Environment, itArgs types.Iterator) types.Object {

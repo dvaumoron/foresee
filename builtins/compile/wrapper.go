@@ -84,12 +84,10 @@ func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.
 			casted2, _ := arg0.(*types.List)
 			// detect Field:value (could be a classic function/operator call)
 			if header, _ := casted2.LoadInt(0).(types.Identifier); header == names.ListId {
-				fieldId, _ := casted2.LoadInt(1).(types.Identifier)
-				dict := jen.Dict{jen.Id(string(fieldId)): compileToCode(env, casted2.LoadInt(2))}
+				dict := jen.Dict{compileToCode(env, casted2.LoadInt(1)): compileToCode(env, casted2.LoadInt(2))}
 				types.ForEach(itArgs, func(elem types.Object) bool {
 					fieldDesc, _ := elem.(*types.List)
-					fieldId, _ := fieldDesc.LoadInt(1).(types.Identifier)
-					dict[jen.Id(string(fieldId))] = compileToCode(env, fieldDesc.LoadInt(2))
+					dict[compileToCode(env, fieldDesc.LoadInt(1))] = compileToCode(env, fieldDesc.LoadInt(2))
 					return true
 				})
 				argsCode = []jen.Code{dict}
