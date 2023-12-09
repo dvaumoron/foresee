@@ -34,7 +34,7 @@ type ConvertString = func(string) (types.Object, bool)
 func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
-		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseArrowChanType, parseChanArrowType, parseChanType,
+		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseNot, parseArrowChanType, parseChanArrowType, parseChanType,
 		parseGenericType, parseArrayOrSliceType, parseMapType, parseFuncType, parseDotField,
 	}
 }
@@ -152,7 +152,7 @@ func parseListSep(word string, sep rune, kindId types.Identifier) (types.Object,
 		case '>', ']', '}':
 			opennedLen := len(waiteds)
 			if opennedLen == 0 {
-				return nil, true
+				return nil, false
 			}
 
 			lastIndex := opennedLen - 1
@@ -252,7 +252,9 @@ func parseTilde(word string) (types.Object, bool) {
 // handle "&type" as (& type)
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
-	if word[0] != '&' || len(word) == 1 || word == names.AndAssign || word == names.NotAndAssign {
+	if word[0] != '&' || len(word) == 1 ||
+		word == names.And || word == names.AndAssign ||
+		word == names.AndNot || word == names.AndNotAssign {
 		return nil, false
 	}
 	return types.NewList(names.AmpersandId, handleSubWord(word[1:])), true
@@ -261,10 +263,19 @@ func parseAddressing(word string) (types.Object, bool) {
 // handle "*type" as (* type)
 func parseDereference(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
-	if word[0] != '*' || len(word) == 1 || word == "*=" {
+	if word[0] != '*' || len(word) == 1 || word == names.MultAssign {
 		return nil, false
 	}
 	return types.NewList(names.StarId, handleSubWord(word[1:])), true
+}
+
+// handle "!type" as (! type)
+func parseNot(word string) (types.Object, bool) {
+	// test len to keep the basic identifier case
+	if word[0] != '!' || len(word) == 1 || word == names.NotEqual {
+		return nil, false
+	}
+	return types.NewList(names.NotId, handleSubWord(word[1:])), true
 }
 
 // handle "[n]type" or "[]type" as (slice n type) or (slice type)

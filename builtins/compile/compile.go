@@ -33,6 +33,7 @@ var (
 	Builtins = initBuitins()
 )
 
+// TODO handle priority of operator with parenthesis
 func Compile(l *types.List) types.Object {
 	return l.Eval(compileEnvironment{Environment: types.MakeLocalEnvironment(Builtins)})
 }
@@ -88,7 +89,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Minus, types.MakeNativeAppliable(substractionForm))
 	base.StoreStr(names.ModAssign, types.MakeNativeAppliable(moduloAssignForm))
 	base.StoreStr(names.MultAssign, types.MakeNativeAppliable(multiplyAssignForm))
-	base.StoreStr(names.Not, types.MakeNativeAppliable(notForm))
+	base.StoreStr(string(names.NotId), types.MakeNativeAppliable(notForm))
 	base.StoreStr(names.NotEqual, types.MakeNativeAppliable(notEqualForm))
 	base.StoreStr(names.Or, types.MakeNativeAppliable(orForm))
 	base.StoreStr(names.OrAssign, types.MakeNativeAppliable(bitwiseOrAssignForm))

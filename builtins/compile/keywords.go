@@ -47,7 +47,7 @@ func caseForm(env types.Environment, itArgs types.Iterator) types.Object {
 	}
 
 	instructionCodes := compileToCodeSlice(env, itArgs)
-	return wrapper{Renderer: jen.Case(condCodes...).Op(names.Colon).Add(instructionCodes...)}
+	return wrapper{Renderer: jen.Case(condCodes...).Add(instructionCodes...)}
 }
 
 func constForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -56,7 +56,7 @@ func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
 	intructionCodes := compileToCodeSlice(env, itArgs)
-	return wrapper{Renderer: jen.Default().Op(names.Colon).Add(intructionCodes...)}
+	return wrapper{Renderer: jen.Default().Add(intructionCodes...)}
 }
 
 func deferForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -117,7 +117,7 @@ func forForm(env types.Environment, itArgs types.Iterator) types.Object {
 	case *types.List:
 		if casted.Size() != 0 {
 			condCodes = extractSingleOrMultiple(env, casted)
-			if i := len(condCodes); i != 0 {
+			if i := len(condCodes); i > 1 {
 				for ; i < 3; i++ {
 					condCodes = append(condCodes, jen.Empty())
 				}

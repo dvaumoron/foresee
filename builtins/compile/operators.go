@@ -175,7 +175,7 @@ func notForm(env types.Environment, itArgs types.Iterator) types.Object {
 	if !ok {
 		return wrappedErrorComment
 	}
-	return wrapper{Renderer: jen.Op(names.Not).Add(compileToCode(env, arg0))}
+	return wrapper{Renderer: jen.Op(string(names.NotId)).Add(compileToCode(env, arg0))}
 }
 
 func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
