@@ -249,7 +249,7 @@ func parseTilde(word string) (types.Object, bool) {
 	return types.NewList(names.TildeId, handleSubWord(word[1:])), true
 }
 
-// handle "&type" as (& type)
+// handle "&value" as (& value)
 func parseAddressing(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '&' || len(word) == 1 ||
@@ -260,7 +260,7 @@ func parseAddressing(word string) (types.Object, bool) {
 	return types.NewList(names.AmpersandId, handleSubWord(word[1:])), true
 }
 
-// handle "*type" as (* type)
+// handle "*a" as (* a)
 func parseDereference(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '*' || len(word) == 1 || word == names.MultAssign {
@@ -269,7 +269,7 @@ func parseDereference(word string) (types.Object, bool) {
 	return types.NewList(names.StarId, handleSubWord(word[1:])), true
 }
 
-// handle "!type" as (! type)
+// handle "!b" as (! b)
 func parseNot(word string) (types.Object, bool) {
 	// test len to keep the basic identifier case
 	if word[0] != '!' || len(word) == 1 || word == names.NotEqual {
