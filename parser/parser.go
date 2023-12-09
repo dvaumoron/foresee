@@ -71,8 +71,9 @@ LineLoop:
 						listStack.pop()
 						if top != index {
 							indentStack.pop()
-							for top = indentStack.peek(); top > index; top = indentStack.pop() {
+							for top = indentStack.peek(); top > index; top = indentStack.peek() {
 								listStack.pop()
+								indentStack.pop()
 							}
 							if top < index {
 								err = errIndent
