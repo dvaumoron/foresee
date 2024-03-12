@@ -82,14 +82,14 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg1 := sumFunc(env, itArgs)
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		switch casted2 := arg1.Eval(env).(type) {
+		switch casted2 := arg1.(type) {
 		case types.Integer:
 			return types.Integer(casted - casted2)
 		case types.Float:
 			return types.Float(float64(casted) - float64(casted2))
 		}
 	case types.Float:
-		switch casted2 := arg1.Eval(env).(type) {
+		switch casted2 := arg1.(type) {
 		case types.Integer:
 			return types.Float(float64(casted) - float64(casted2))
 		case types.Float:
@@ -101,12 +101,12 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 
 func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	arg1, _ := itArgs.Next()
+	arg1 := productFunc(env, itArgs)
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		return divideObject(float64(casted), arg1.Eval(env))
+		return divideObject(float64(casted), arg1)
 	case types.Float:
-		return divideObject(float64(casted), arg1.Eval(env))
+		return divideObject(float64(casted), arg1)
 	}
 	return types.None
 }
@@ -129,18 +129,23 @@ func remainderOperator(a, b int64) int64 {
 	return a % b
 }
 
-func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return intOperatorFunc(env, itArgs, remainderOperator)
-}
-
-func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {
+func remainderFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {
 	arg0, _ := itArgs.Next()
 	a, ok := arg0.Eval(env).(types.Integer)
 	if ok {
-		arg1, _ := itArgs.Next()
-		b, _ := arg1.Eval(env).(types.Integer)
-		if b != 0 { // non integer and zero are treated the same way thanks to type assertion
-			return types.Integer(intOperator(int64(a), int64(b)))
+		allInt := true
+		res := int64(a)
+		var b types.Integer
+		types.ForEach(itArgs, func(arg types.Object) bool {
+			b, allInt = arg.Eval(env).(types.Integer)
+			if allInt = allInt && b != 0; allInt {
+				res %= int64(b)
+			}
+			return allInt
+		})
+
+		if allInt {
+			return types.Integer(res)
 		}
 	}
 	return types.None
