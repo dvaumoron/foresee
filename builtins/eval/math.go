@@ -125,15 +125,10 @@ func divideObject(a float64, b types.Object) types.Object {
 	return types.None
 }
 
-func remainderOperator(a, b int64) int64 {
-	return a % b
-}
-
-func remainderFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {
+func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	a, ok := arg0.Eval(env).(types.Integer)
-	if ok {
-		allInt := true
+	a, allInt := arg0.Eval(env).(types.Integer)
+	if allInt {
 		res := int64(a)
 		var b types.Integer
 		types.ForEach(itArgs, func(arg types.Object) bool {
