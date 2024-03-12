@@ -187,7 +187,7 @@ func processDefLine(env types.Environment, defDesc *types.List) jen.Code {
 }
 
 // labellableCode is not cloned (must generate a new one on each call)
-func processLabellable(env types.Environment, itArgs types.Iterator, labellableCode *jen.Statement) types.Object {
+func processLabellable(_ types.Environment, itArgs types.Iterator, labellableCode *jen.Statement) types.Object {
 	if arg0, ok := itArgs.Next(); ok {
 		labelId, ok := arg0.(types.Identifier)
 		if !ok {

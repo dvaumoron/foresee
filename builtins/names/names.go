@@ -58,6 +58,7 @@ const (
 	Load          = "[]"
 	LShift        = "<<"
 	LShiftAssign  = "<<="
+	Macro         = "macro"
 	Minus         = "-"
 	ModAssign     = "%="
 	MultAssign    = "*="
