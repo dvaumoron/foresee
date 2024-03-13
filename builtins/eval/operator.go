@@ -99,6 +99,12 @@ func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Minus)
 }
 
+func notFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	arg, _ := itArgs.Next()
+
+	return types.Boolean(!extractBoolean(arg.Eval(env)))
+}
+
 func orForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return boolOperatorForm(env, itArgs, false)
 }

@@ -75,7 +75,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Minus, types.MakeNativeAppliable(minusFunc))
 	base.StoreStr(names.ModAssign, types.MakeNativeAppliable(remainderSetForm))
 	base.StoreStr(names.MultAssign, types.MakeNativeAppliable(productSetForm))
-	base.StoreStr(string(names.NotId), types.MakeNativeAppliable(notForm))
+	base.StoreStr(string(names.NotId), types.MakeNativeAppliable(notFunc))
 	base.StoreStr(names.NotEqual, types.MakeNativeAppliable(notEqualForm))
 	base.StoreStr(names.Or, types.MakeNativeAppliable(orForm))
 	base.StoreStr(names.OrAssign, types.MakeNativeAppliable(bitwiseOrAssignForm))
