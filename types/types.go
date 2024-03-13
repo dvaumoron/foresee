@@ -19,6 +19,8 @@ import (
 	"strconv"
 )
 
+type NativeFunc = func(Environment, Iterator) Object
+
 type NoneType struct{}
 
 func (n NoneType) Render(w io.Writer) error {
@@ -130,7 +132,7 @@ func (i Identifier) Eval(env Environment) Object {
 
 type NativeAppliable struct {
 	NoneType
-	inner func(Environment, Iterator) Object
+	inner NativeFunc
 }
 
 func (n NativeAppliable) Apply(env Environment, it Iterable) Object {
@@ -139,6 +141,6 @@ func (n NativeAppliable) Apply(env Environment, it Iterable) Object {
 	return n.inner(env, it2)
 }
 
-func MakeNativeAppliable(f func(Environment, Iterator) Object) NativeAppliable {
+func MakeNativeAppliable(f NativeFunc) NativeAppliable {
 	return NativeAppliable{inner: f}
 }

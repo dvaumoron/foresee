@@ -14,7 +14,6 @@
 package eval
 
 import (
-	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
@@ -36,20 +35,10 @@ func multNumber[N number](a, b N) N {
 	return a * b
 }
 
-var sumCarac = cumulCarac{
-	init: 0, cumulInt: addNumber[int64], cumulFloat: addNumber[float64],
-}
-var productCarac = cumulCarac{
-	init: 1, cumulInt: multNumber[int64], cumulFloat: multNumber[float64],
-}
-
-func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return cumulFunc(env, itArgs, sumCarac)
-}
-
-func productFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return cumulFunc(env, itArgs, productCarac)
-}
+var (
+	sumCarac     = cumulCarac{init: 0, cumulInt: addNumber[int64], cumulFloat: addNumber[float64]}
+	productCarac = cumulCarac{init: 1, cumulInt: multNumber[int64], cumulFloat: multNumber[float64]}
+)
 
 func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) types.Object {
 	cumulI := carac.init
@@ -67,29 +56,30 @@ func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) t
 		}
 		return allValidType
 	})
-	if allValidType {
-		if hasFloat {
-			return types.Float(carac.cumulFloat(float64(cumulI), cumulF))
-		} else {
-			return types.Integer(cumulI)
-		}
+
+	if !allValidType {
+		return types.None
 	}
-	return types.None
+
+	if hasFloat {
+		return types.Float(carac.cumulFloat(float64(cumulI), cumulF))
+	}
+
+	return types.Integer(cumulI)
 }
 
 func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	arg1 := sumFunc(env, itArgs)
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		switch casted2 := arg1.(type) {
+		switch casted2 := sumFunc(env, itArgs).(type) {
 		case types.Integer:
 			return types.Integer(casted - casted2)
 		case types.Float:
 			return types.Float(float64(casted) - float64(casted2))
 		}
 	case types.Float:
-		switch casted2 := arg1.(type) {
+		switch casted2 := sumFunc(env, itArgs).(type) {
 		case types.Integer:
 			return types.Float(float64(casted) - float64(casted2))
 		case types.Float:
@@ -101,12 +91,11 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 
 func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
-	arg1 := productFunc(env, itArgs)
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		return divideObject(float64(casted), arg1)
+		return divideObject(float64(casted), productFunc(env, itArgs))
 	case types.Float:
-		return divideObject(float64(casted), arg1)
+		return divideObject(float64(casted), productFunc(env, itArgs))
 	}
 	return types.None
 }
@@ -128,46 +117,61 @@ func divideObject(a float64, b types.Object) types.Object {
 func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	a, allInt := arg0.Eval(env).(types.Integer)
-	if allInt {
-		res := int64(a)
-		var b types.Integer
-		types.ForEach(itArgs, func(arg types.Object) bool {
-			b, allInt = arg.Eval(env).(types.Integer)
-			if allInt = allInt && b != 0; allInt {
-				res %= int64(b)
-			}
-			return allInt
-		})
-
-		if allInt {
-			return types.Integer(res)
-		}
+	if !allInt {
+		return types.None
 	}
-	return types.None
+
+	res := int64(a)
+	var b types.Integer
+	types.ForEach(itArgs, func(arg types.Object) bool {
+		b, allInt = arg.Eval(env).(types.Integer)
+		if allInt = allInt && b != 0; allInt {
+			res %= int64(b)
+		}
+		return allInt
+	})
+
+	if !allInt {
+		return types.None
+	}
+
+	return types.Integer(res)
 }
 
-func sumSetForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return inplaceOperatorForm(env, itArgs, names.Plus)
+func bitwiseAndNotOperator(a, b int64) int64 {
+	return a &^ b
 }
 
-func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return inplaceOperatorForm(env, itArgs, names.Minus)
+func bitwiseAndOperator(a, b int64) int64 {
+	return a & b
 }
 
-func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return inplaceOperatorForm(env, itArgs, string(names.StarId))
+func bitwiseOrOperator(a, b int64) int64 {
+	return a | b
 }
 
-func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return inplaceOperatorForm(env, itArgs, names.Slash)
+func bitwiseXOrOperator(a, b int64) int64 {
+	return a ^ b
 }
 
-func remainderSetForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return inplaceOperatorForm(env, itArgs, names.Percent)
-}
+func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {
+	arg0, _ := itArgs.Next()
+	a, allInt := arg0.Eval(env).(types.Integer)
+	if !allInt {
+		return types.None
+	}
 
-func inplaceOperatorForm(env types.Environment, itArgs types.Iterator, opStr string) types.Object {
-	arg, _ := itArgs.Next()
-	opCall := types.NewList(types.Identifier(opStr), arg).AddAll(itArgs)
-	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
+	res := int64(a)
+	var b types.Integer
+	types.ForEach(itArgs, func(arg types.Object) bool {
+		b, allInt = arg.Eval(env).(types.Integer)
+		res = intOperator(res, int64(b))
+		return allInt
+	})
+
+	if !allInt {
+		return types.None
+	}
+
+	return types.Integer(res)
 }

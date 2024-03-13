@@ -25,22 +25,22 @@ func initBuitins() types.BaseEnvironment {
 	noOpAppliable := types.MakeNativeAppliable(noOp)
 
 	base := types.MakeBaseEnvironment()
-	base.StoreStr(names.AddAssign, types.MakeNativeAppliable(addAssignForm))
+	base.StoreStr(names.AddAssign, types.MakeNativeAppliable(sumSetForm))
 	base.StoreStr(string(names.AmpersandId), types.MakeNativeAppliable(addressOrBitwiseAndForm))
 	base.StoreStr(names.And, types.MakeNativeAppliable(andForm))
 	base.StoreStr(names.AndAssign, types.MakeNativeAppliable(bitwiseAndAssignForm))
-	base.StoreStr(names.AndNot, types.MakeNativeAppliable(bitwiseAndNotForm))
+	base.StoreStr(names.AndNot, types.MakeNativeAppliable(bitwiseAndNotFunc))
 	base.StoreStr(names.AndNotAssign, types.MakeNativeAppliable(bitwiseAndNotAssignForm))
 	base.StoreStr(names.Arrow, types.MakeNativeAppliable(receivingOrSendingForm))
 	base.StoreStr(names.Assert, types.MakeNativeAppliable(assertForm))
 	base.StoreStr(names.Assign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Block, types.MakeNativeAppliable(blockForm))
 	base.StoreStr(names.Break, types.MakeNativeAppliable(breakForm))
-	base.StoreStr(names.Caret, types.MakeNativeAppliable(bitwiseXOrForm))
+	base.StoreStr(names.Caret, types.MakeNativeAppliable(bitwiseXOrFunc))
 	base.StoreStr(names.Case, types.MakeNativeAppliable(caseForm))
 	base.StoreStr(names.Const, types.MakeNativeAppliable(constForm))
 	base.StoreStr(names.Continue, types.MakeNativeAppliable(continueForm))
-	base.StoreStr(names.DeclareAssign, types.MakeNativeAppliable(declareAssignForm))
+	base.StoreStr(names.DeclareAssign, types.MakeNativeAppliable(assignForm))
 	base.StoreStr(names.Decrement, types.MakeNativeAppliable(decrementForm))
 	base.StoreStr(names.Default, types.MakeNativeAppliable(defaultForm))
 	base.StoreStr(names.Defer, types.MakeNativeAppliable(deferForm))
@@ -81,7 +81,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.OrAssign, types.MakeNativeAppliable(bitwiseOrAssignForm))
 	base.StoreStr(names.Package, noOpAppliable)
 	base.StoreStr(names.Percent, types.MakeNativeAppliable(remainderFunc))
-	base.StoreStr(names.Pipe, types.MakeNativeAppliable(bitwiseOrForm))
+	base.StoreStr(names.Pipe, types.MakeNativeAppliable(bitwiseXOrFunc))
 	base.StoreStr(names.Plus, types.MakeNativeAppliable(sumFunc))
 	base.StoreStr(names.Range, types.MakeNativeAppliable(rangeForm))
 	base.StoreStr(names.Return, types.MakeNativeAppliable(returnForm))
@@ -98,11 +98,15 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Var, types.MakeNativeAppliable(varForm))
 	base.StoreStr(names.XorAssign, types.MakeNativeAppliable(bitwiseXOrAssignForm))
 
-	// TODO
-
 	// give parser package a protected copy to use in user custom rules
 	parser.BuiltinsCopy = types.MakeLocalEnvironment(base)
 	return base
+}
+
+func evalFirstOp(env types.Environment, itArgs types.Iterator) types.Object {
+	args0, _ := itArgs.Next()
+
+	return args0.Eval(env)
 }
 
 func noOp(env types.Environment, itArgs types.Iterator) types.Object {
