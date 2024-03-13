@@ -47,15 +47,15 @@ func inplaceOperatorForm(env types.Environment, itArgs types.Iterator, opStr str
 	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
 }
 
-func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, unaryOp types.NativeFunc, binaryMoreOp types.NativeFunc) types.Object {
+func processUnaryOrBinaryMoreFunc(env types.Environment, itArgs types.Iterator, unaryFunc types.NativeFunc, binaryMoreFunc types.NativeFunc) types.Object {
 	args := types.NewList().AddAll(itArgs)
 
 	itArgs2 := args.Iter()
 	defer itArgs2.Close()
 
 	if args.Size() == 1 {
-		return unaryOp(env, itArgs2)
+		return unaryFunc(env, itArgs2)
 	}
 
-	return binaryMoreOp(env, itArgs2)
+	return binaryMoreFunc(env, itArgs2)
 }

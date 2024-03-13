@@ -27,17 +27,33 @@ type number interface {
 	int64 | float64
 }
 
-func addNumber[N number](a, b N) N {
+func bitwiseAndNotOperator(a, b int64) int64 {
+	return a &^ b
+}
+
+func bitwiseAndOperator(a, b int64) int64 {
+	return a & b
+}
+
+func bitwiseOrOperator(a, b int64) int64 {
+	return a | b
+}
+
+func bitwiseXOrOperator(a, b int64) int64 {
+	return a ^ b
+}
+
+func addNumberOperator[N number](a, b N) N {
 	return a + b
 }
 
-func multNumber[N number](a, b N) N {
+func multNumberOperator[N number](a, b N) N {
 	return a * b
 }
 
 var (
-	sumCarac     = cumulCarac{init: 0, cumulInt: addNumber[int64], cumulFloat: addNumber[float64]}
-	productCarac = cumulCarac{init: 1, cumulInt: multNumber[int64], cumulFloat: multNumber[float64]}
+	sumCarac     = cumulCarac{init: 0, cumulInt: addNumberOperator[int64], cumulFloat: addNumberOperator[float64]}
+	productCarac = cumulCarac{init: 1, cumulInt: multNumberOperator[int64], cumulFloat: multNumberOperator[float64]}
 )
 
 func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) types.Object {
@@ -136,22 +152,6 @@ func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	}
 
 	return types.Integer(res)
-}
-
-func bitwiseAndNotOperator(a, b int64) int64 {
-	return a &^ b
-}
-
-func bitwiseAndOperator(a, b int64) int64 {
-	return a & b
-}
-
-func bitwiseOrOperator(a, b int64) int64 {
-	return a | b
-}
-
-func bitwiseXOrOperator(a, b int64) int64 {
-	return a ^ b
 }
 
 func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {

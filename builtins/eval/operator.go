@@ -19,7 +19,11 @@ import (
 )
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryMoreOperator(env, itArgs, evalFirstOp, bitwiseAndFunc)
+	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, bitwiseAndFunc)
+}
+
+func andForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return boolOperatorForm(env, itArgs, true)
 }
 
 func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -84,7 +88,7 @@ func bitwiseXOrFunc(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryMoreOperator(env, itArgs, evalFirstOp, productFunc)
+	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, productFunc)
 }
 
 func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -93,6 +97,10 @@ func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Minus)
+}
+
+func orForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return boolOperatorForm(env, itArgs, false)
 }
 
 func productFunc(env types.Environment, itArgs types.Iterator) types.Object {
