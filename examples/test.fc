@@ -26,9 +26,9 @@ func Addition(a b) ?
 	return (. a Add b)
 
 func UseAdder() # no ? (there is no return)
-	var a:float64
+	var a:complex128
 	= a 1
-	var b:float64 2
+	var b:complex128 2
 
 	. fmt Println "Result 1 is" (Addition (NewAdder a) b)
 
