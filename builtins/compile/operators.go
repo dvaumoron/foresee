@@ -198,7 +198,7 @@ func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.
 	}
 
 	targetCode := Renderer(extractType(env, arg0))
-	if targetCode == nil {
+	if targetCode == (*jen.Statement)(nil) {
 		targetCode = compileToCode(env, arg0)
 	}
 	// returned value could be callable when receiving from channel
