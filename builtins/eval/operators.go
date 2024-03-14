@@ -111,10 +111,10 @@ func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object 
 	return types.None
 }
 
-func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func equalFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	return types.Boolean(ok && equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
 func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -167,10 +167,10 @@ func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Minus)
 }
 
-func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func notEqualFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	return types.Boolean(ok && !equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
 func notFunc(env types.Environment, itArgs types.Iterator) types.Object {
