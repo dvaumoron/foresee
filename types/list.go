@@ -19,8 +19,9 @@ type List struct {
 	inner []Object
 }
 
-func (l *List) Add(value Object) {
+func (l *List) Add(value Object) *List {
 	l.inner = append(l.inner, value)
+	return l
 }
 
 // If the action func return false that break the loop.

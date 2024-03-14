@@ -47,6 +47,12 @@ func inplaceOperatorForm(env types.Environment, itArgs types.Iterator, opStr str
 	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
 }
 
+func inplaceUnaryOperatorForm(env types.Environment, itArgs types.Iterator, opStr string) types.Object {
+	arg, _ := itArgs.Next()
+	opCall := types.NewList(types.Identifier(opStr), arg).Add(types.Integer(1))
+	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
+}
+
 func processUnaryOrBinaryMoreFunc(env types.Environment, itArgs types.Iterator, unaryFunc types.NativeFunc, binaryMoreFunc types.NativeFunc) types.Object {
 	args := types.NewList().AddAll(itArgs)
 

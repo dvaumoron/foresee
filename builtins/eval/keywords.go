@@ -122,12 +122,6 @@ func importForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
-}
-
 func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO
 

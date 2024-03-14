@@ -94,9 +94,7 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return inplaceUnaryOperatorForm(env, itArgs, names.Minus)
 }
 
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -129,6 +127,10 @@ func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO
 
 	return types.None
+}
+
+func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+	return inplaceUnaryOperatorForm(env, itArgs, names.Plus)
 }
 
 func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
