@@ -87,6 +87,18 @@ func bitwiseXOrFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	return intOperatorFunc(env, itArgs, bitwiseXOrOperator)
 }
 
+func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, productFunc)
 }
@@ -95,8 +107,68 @@ func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Slash)
 }
 
+func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func leftShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func leftShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func lesserEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
 func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Minus)
+}
+
+func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
 }
 
 func notFunc(env types.Environment, itArgs types.Iterator) types.Object {
@@ -117,8 +189,32 @@ func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, string(names.StarId))
 }
 
+func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
 func remainderSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Percent)
+}
+
+func rightShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func rightShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
+}
+
+func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO
+
+	return types.None
 }
 
 func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
