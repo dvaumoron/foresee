@@ -14,7 +14,15 @@
 package eval
 
 import (
+	"errors"
+
 	"github.com/dvaumoron/foresee/types"
+)
+
+var (
+	errBooleanType    = errors.New("wait boolean value")
+	errComparableType = errors.New("wait comparable value")
+	errOrderableType  = errors.New("wait orderable value")
 )
 
 type comparator struct {
@@ -102,9 +110,13 @@ func compare(value0 types.Object, value1 types.Object, c comparator) bool {
 		}
 	case types.String:
 		casted1, ok := value1.(types.String)
-		return ok && c.compareString(string(casted0), string(casted1))
+		if !ok {
+			break
+		}
+
+		return c.compareString(string(casted0), string(casted1))
 	}
-	return false
+	panic(errOrderableType)
 }
 
 func boolOperatorForm(env types.Environment, itArgs types.Iterator, defaultB bool) types.Object {
@@ -123,7 +135,7 @@ func boolOperatorForm(env types.Environment, itArgs types.Iterator, defaultB boo
 	})
 
 	if !allBool {
-		return types.None
+		panic(errBooleanType)
 	}
 
 	return res
@@ -153,9 +165,13 @@ func equals(value0 types.Object, value1 types.Object) bool {
 		}
 	case types.String:
 		casted1, ok := value1.(types.String)
-		return ok && (casted0 == casted1)
+		if !ok {
+			break
+		}
+
+		return casted0 == casted1
 	default:
 		// TODO other type (func, struct, etc.)
 	}
-	return false
+	panic(errComparableType)
 }
