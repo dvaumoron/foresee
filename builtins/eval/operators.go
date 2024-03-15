@@ -14,9 +14,14 @@
 package eval
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
+
+var errStringType = errors.New("wait string value")
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, bitwiseAndFunc)
@@ -93,6 +98,24 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func concatFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	allString := true
+	var temp types.String
+	var builder strings.Builder
+	types.ForEach(itArgs, func(arg types.Object) bool {
+		temp, allString = arg.Eval(env).(types.String)
+		builder.WriteString(string(temp))
+
+		return allString
+	})
+
+	if !allString {
+		panic(errStringType)
+	}
+
+	return types.String(builder.String())
+}
+
 func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceUnaryOperatorForm(env, itArgs, names.Minus)
 }
@@ -136,15 +159,11 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 }
 
 func leftShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return inplaceOperatorForm(env, itArgs, names.LShift)
 }
 
-func leftShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func leftShiftFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	return intOperatorFunc(env, itArgs, leftShiftOperator)
 }
 
 func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -194,15 +213,11 @@ func remainderSetForm(env types.Environment, itArgs types.Iterator) types.Object
 }
 
 func rightShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return inplaceOperatorForm(env, itArgs, names.RShift)
 }
 
-func rightShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func rightShiftFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	return intOperatorFunc(env, itArgs, rightShiftOperator)
 }
 
 func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -212,6 +227,15 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	args := types.NewList().AddAll(itArgs)
+
+	itArgs2 := args.Iter()
+	defer itArgs2.Close()
+
+	if _, isString := args.LoadInt(0).(types.String); isString {
+		return concatFunc(env, itArgs2)
+	}
+
 	return cumulFunc(env, itArgs, sumCarac)
 }
 

@@ -14,7 +14,15 @@
 package eval
 
 import (
+	"errors"
+
 	"github.com/dvaumoron/foresee/types"
+)
+
+var (
+	errIntegerType  = errors.New("wait integer value")
+	errNumericType  = errors.New("wait numeric value")
+	errZeroDivision = errors.New("division by zero")
 )
 
 type cumulCarac struct {
@@ -25,6 +33,10 @@ type cumulCarac struct {
 
 type number interface {
 	int64 | float64
+}
+
+func addNumberOperator[N number](a, b N) N {
+	return a + b
 }
 
 func bitwiseAndNotOperator(a, b int64) int64 {
@@ -43,12 +55,16 @@ func bitwiseXOrOperator(a, b int64) int64 {
 	return a ^ b
 }
 
-func addNumberOperator[N number](a, b N) N {
-	return a + b
+func leftShiftOperator(a, b int64) int64 {
+	return a << b
 }
 
 func multNumberOperator[N number](a, b N) N {
 	return a * b
+}
+
+func rightShiftOperator(a, b int64) int64 {
+	return a >> b
 }
 
 var (
@@ -59,7 +75,7 @@ var (
 func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) types.Object {
 	cumulI := carac.init
 	cumulF := float64(cumulI)
-	allValidType, hasFloat := true, false
+	allNumericType, hasFloat := true, false
 	types.ForEach(itArgs, func(arg types.Object) bool {
 		switch casted := arg.Eval(env).(type) {
 		case types.Integer:
@@ -68,13 +84,13 @@ func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) t
 			hasFloat = true
 			cumulF = carac.cumulFloat(cumulF, float64(casted))
 		default:
-			allValidType = false
+			allNumericType = false
 		}
-		return allValidType
+		return allNumericType
 	})
 
-	if !allValidType {
-		return types.None
+	if !allNumericType {
+		panic(errNumericType)
 	}
 
 	if hasFloat {
@@ -102,7 +118,7 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 			return types.Float(casted - casted2)
 		}
 	}
-	return types.None
+	panic(errNumericType)
 }
 
 func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
@@ -113,7 +129,7 @@ func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	case types.Float:
 		return divideObject(float64(casted), productFunc(env, itArgs))
 	}
-	return types.None
+	panic(errNumericType)
 }
 
 func divideObject(a float64, b types.Object) types.Object {
@@ -127,14 +143,14 @@ func divideObject(a float64, b types.Object) types.Object {
 			return types.Float(a / float64(casted))
 		}
 	}
-	return types.None
+	panic(errNumericType)
 }
 
 func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	a, allInt := arg0.Eval(env).(types.Integer)
 	if !allInt {
-		return types.None
+		panic(errIntegerType)
 	}
 
 	res := int64(a)
@@ -148,7 +164,7 @@ func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	})
 
 	if !allInt {
-		return types.None
+		panic(errIntegerType)
 	}
 
 	return types.Integer(res)
@@ -158,7 +174,7 @@ func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator f
 	arg0, _ := itArgs.Next()
 	a, allInt := arg0.Eval(env).(types.Integer)
 	if !allInt {
-		return types.None
+		panic(errIntegerType)
 	}
 
 	res := int64(a)
@@ -170,7 +186,7 @@ func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator f
 	})
 
 	if !allInt {
-		return types.None
+		panic(errIntegerType)
 	}
 
 	return types.Integer(res)
