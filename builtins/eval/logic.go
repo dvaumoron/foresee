@@ -58,23 +58,7 @@ var (
 	lessThanComparator     = comparator{compareInt: lessThan[int64], compareFloat: lessThan[float64], compareString: lessThan[string]}
 )
 
-func greaterThanFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return compareFunc(env, itArgs, greaterThanComparator)
-}
-
-func greaterEqualFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return compareFunc(env, itArgs, greaterEqualComparator)
-}
-
-func lessThanFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return compareFunc(env, itArgs, lessThanComparator)
-}
-
-func lessEqualFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return compareFunc(env, itArgs, lessEqualComparator)
-}
-
-func compareFunc(env types.Environment, itArgs types.Iterator, c comparator) types.Object {
+func compareForm(env types.Environment, itArgs types.Iterator, c comparator) types.Object {
 	arg0, res := itArgs.Next()
 	if !res {
 		return types.Boolean(false)

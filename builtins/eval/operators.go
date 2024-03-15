@@ -118,15 +118,11 @@ func equalFunc(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return compareForm(env, itArgs, greaterEqualComparator)
 }
 
 func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return compareForm(env, itArgs, greaterThanComparator)
 }
 
 func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -152,15 +148,11 @@ func leftShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return compareForm(env, itArgs, lessThanComparator)
 }
 
 func lesserEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return compareForm(env, itArgs, lessEqualComparator)
 }
 
 func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
