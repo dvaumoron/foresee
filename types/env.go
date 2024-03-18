@@ -29,12 +29,8 @@ func (b BaseEnvironment) LoadStr(key string) (Object, bool) {
 }
 
 func Load(env StringLoadable, key Object) Object {
-	switch casted := key.(type) {
-	case Rune:
-		res, _ := env.LoadStr(string(casted))
-		return res
-	case String:
-		res, _ := env.LoadStr(string(casted))
+	if id, ok := key.(Identifier); ok {
+		res, _ := env.LoadStr(string(id))
 		return res
 	}
 	return None
@@ -45,11 +41,8 @@ func (b BaseEnvironment) Load(key Object) Object {
 }
 
 func (b BaseEnvironment) Store(key Object, value Object) {
-	switch casted := key.(type) {
-	case Rune:
-		b.objects[string(casted)] = value
-	case String:
-		b.objects[string(casted)] = value
+	if id, ok := key.(Identifier); ok {
+		b.StoreStr(string(id), value)
 	}
 }
 
@@ -58,11 +51,8 @@ func (b BaseEnvironment) StoreStr(key string, value Object) {
 }
 
 func (b BaseEnvironment) Delete(key Object) {
-	switch casted := key.(type) {
-	case Rune:
-		delete(b.objects, string(casted))
-	case String:
-		delete(b.objects, string(casted))
+	if id, ok := key.(Identifier); ok {
+		b.DeleteStr(string(id))
 	}
 }
 
