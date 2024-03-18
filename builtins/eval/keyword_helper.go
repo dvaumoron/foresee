@@ -28,8 +28,7 @@ var (
 	errPairSize       = errors.New("wait at least 2 elements")
 )
 
-func initBaseFromPairs(env types.Environment, itArgs types.Iterator, pairAdder func(types.BaseEnvironment, *types.List, types.Environment)) types.Object {
-	res := types.MakeBaseEnvironment()
+func initEnvFromPairs(env types.Environment, itArgs types.Iterator, o types.Environment, pairAdder func(types.Environment, *types.List, types.Environment)) types.Object {
 	types.ForEach(itArgs, func(elem types.Object) bool {
 		pair, ok := elem.(*types.List)
 		if !ok {
@@ -39,27 +38,27 @@ func initBaseFromPairs(env types.Environment, itArgs types.Iterator, pairAdder f
 			panic(errPairSize)
 		}
 
-		pairAdder(res, pair, env)
+		pairAdder(o, pair, env)
 
 		return true
 	})
 
-	return res
+	return o
 }
 
 func initMapForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initBaseFromPairs(env, itArgs, mapPairAdder)
+	return initEnvFromPairs(env, itArgs, nil, mapPairAdder) // TODO type Dynamic implementing Environment (handling all key type)
 }
 
 func initStructForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initBaseFromPairs(env, itArgs, structPairAdder)
+	return initEnvFromPairs(env, itArgs, types.MakeBaseEnvironment(), structPairAdder)
 }
 
-func mapPairAdder(res types.BaseEnvironment, pair *types.List, env types.Environment) {
+func mapPairAdder(res types.Environment, pair *types.List, env types.Environment) {
 	res.Store(pair.LoadInt(1).Eval(env), pair.LoadInt(2).Eval(env))
 }
 
-func structPairAdder(res types.BaseEnvironment, pair *types.List, env types.Environment) {
+func structPairAdder(res types.Environment, pair *types.List, env types.Environment) {
 	id, ok := pair.LoadInt(1).(types.Identifier)
 	if !ok {
 		panic(errIdentifierType)
