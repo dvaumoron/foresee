@@ -135,9 +135,7 @@ func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return initStructAppliable
 }
 
 func macroForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -147,9 +145,7 @@ func macroForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func mapTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return initMapAppliable
 }
 
 func rangeForm(env types.Environment, itArgs types.Iterator) types.Object {
