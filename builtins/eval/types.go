@@ -58,6 +58,7 @@ func (d dynamicObject) LoadStr(key string) (types.Object, bool) {
 	}
 
 	if res, ok = d.objectType.methods[key]; ok {
+		// TODO currying
 		return res, true
 	}
 
