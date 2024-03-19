@@ -25,6 +25,7 @@ var (
 	errIndexableType  = errors.New("wait indexable type")
 	errPairSize       = errors.New("wait at least 2 elements")
 	errSelectableType = errors.New("wait indexable type")
+	errTripleSize     = errors.New("wait at least 3 elements")
 	errUnarySize      = errors.New("wait 1 argument")
 )
 

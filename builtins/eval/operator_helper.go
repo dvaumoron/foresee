@@ -33,12 +33,12 @@ func inplaceUnaryOperatorForm(env types.Environment, itArgs types.Iterator, opSt
 func processUnaryOrBinaryMoreFunc(env types.Environment, itArgs types.Iterator, unaryFunc types.NativeFunc, binaryMoreFunc types.NativeFunc) types.Object {
 	args := types.NewList().AddAll(itArgs)
 
-	itArgs2 := args.Iter()
-	defer itArgs2.Close()
+	itArgs = args.Iter()
+	defer itArgs.Close()
 
 	if args.Size() == 1 {
-		return unaryFunc(env, itArgs2)
+		return unaryFunc(env, itArgs)
 	}
 
-	return binaryMoreFunc(env, itArgs2)
+	return binaryMoreFunc(env, itArgs)
 }

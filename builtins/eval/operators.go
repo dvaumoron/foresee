@@ -229,7 +229,33 @@ func rightShiftFunc(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	args := types.NewList().AddAll(itArgs)
+	lastIndex := args.Size() - 1
+	if lastIndex < 2 {
+		panic(errTripleSize)
+	}
+
+	current, ok := args.LoadInt(0).Eval(env).(types.Loadable)
+	if !ok {
+		panic(errIndexableType)
+	}
+
+	index := args.LoadInt(1).Eval(env)
+	for i := 2; i < lastIndex; i++ {
+		current, ok = current.Load(index).(types.Loadable)
+		if !ok {
+			panic(errIndexableType)
+		}
+
+		index = args.LoadInt(i).Eval(env)
+	}
+
+	storable, ok := current.(types.Storable)
+	if !ok {
+		panic(errAssignableType)
+	}
+
+	storable.Store(index, args.LoadInt(lastIndex).Eval(env))
 
 	return types.None
 }
@@ -237,11 +263,11 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	args := types.NewList().AddAll(itArgs)
 
-	itArgs2 := args.Iter()
-	defer itArgs2.Close()
+	itArgs = args.Iter()
+	defer itArgs.Close()
 
 	if _, isString := args.LoadInt(0).(types.String); isString {
-		return concatFunc(env, itArgs2)
+		return concatFunc(env, itArgs)
 	}
 
 	return cumulFunc(env, itArgs, sumCarac)
