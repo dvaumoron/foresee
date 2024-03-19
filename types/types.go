@@ -14,7 +14,6 @@
 package types
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 )
@@ -24,7 +23,8 @@ type NativeFunc = func(Environment, Iterator) Object
 type NoneType struct{}
 
 func (n NoneType) Render(w io.Writer) error {
-	return nil
+	_, err := io.WriteString(w, "nil")
+	return err
 }
 
 func (n NoneType) Eval(env Environment) Object {
@@ -62,7 +62,7 @@ func (i Integer) Eval(env Environment) Object {
 type Float float64
 
 func (f Float) Render(w io.Writer) error {
-	_, err := io.WriteString(w, fmt.Sprint(float64(f)))
+	_, err := io.WriteString(w, strconv.FormatFloat(float64(f), 'g', -1, 64))
 	return err
 }
 
@@ -73,7 +73,7 @@ func (f Float) Eval(env Environment) Object {
 type Rune rune
 
 func (r Rune) Render(w io.Writer) error {
-	_, err := io.WriteString(w, string(r))
+	_, err := io.WriteString(w, strconv.QuoteRune(rune(r)))
 	return err
 }
 
@@ -84,7 +84,7 @@ func (r Rune) Eval(env Environment) Object {
 type String string
 
 func (s String) Render(w io.Writer) error {
-	_, err := io.WriteString(w, string(s))
+	_, err := io.WriteString(w, strconv.Quote(string(s)))
 	return err
 }
 
@@ -122,7 +122,8 @@ func (s String) Size() int {
 type Identifier string
 
 func (i Identifier) Render(w io.Writer) error {
-	return nil
+	_, err := io.WriteString(w, string(i))
+	return err
 }
 
 func (i Identifier) Eval(env Environment) Object {

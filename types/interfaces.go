@@ -16,6 +16,7 @@ package types
 import "io"
 
 type Loadable interface {
+	Object
 	Load(Object) Object
 }
 
@@ -29,7 +30,6 @@ type StringLoadable interface {
 }
 
 type Environment interface {
-	Object
 	Storable
 	Delete(Object)
 	StringLoadable

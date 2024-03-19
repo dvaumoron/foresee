@@ -15,6 +15,7 @@ package types
 
 import "sync"
 
+// Accept only Identifier key when used as Storable.
 type BaseEnvironment struct {
 	NoneType
 	objects map[string]Object

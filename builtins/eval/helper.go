@@ -45,7 +45,7 @@ func buildAssignFuncFromList(env types.Environment, list *types.List) func(types
 		}
 
 		i := 3
-		index := list.LoadInt(2)
+		index := list.LoadInt(2).Eval(env)
 		currentEnv, ok := prevEnv.Load(index).(types.Storable)
 		for i < size {
 			if !ok {
@@ -53,7 +53,7 @@ func buildAssignFuncFromList(env types.Environment, list *types.List) func(types
 			}
 
 			prevEnv = currentEnv
-			index = list.LoadInt(i)
+			index = list.LoadInt(i).Eval(env)
 			currentEnv, ok = prevEnv.Load(index).(types.Storable)
 			i++
 		}
