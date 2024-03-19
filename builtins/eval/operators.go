@@ -155,7 +155,7 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 	types.ForEach(itArgs, func(elem types.Object) bool {
 		loadable, ok := res.(types.Loadable)
 		if !ok {
-			panic(errListType)
+			panic(errIndexableType)
 		}
 
 		res = loadable.Load(elem.Eval(env))

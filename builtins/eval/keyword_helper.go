@@ -17,10 +17,11 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-var (
-	initMapAppliable    = types.MakeNativeAppliable(initMapForm)
-	initStructAppliable = types.MakeNativeAppliable(initStructForm)
-)
+var initMapAppliable = types.MakeNativeAppliable(initMapForm)
+
+func extractTypeName(_ types.Object) string {
+	return "todo"
+}
 
 func initFromPairs[T types.Object](env types.Environment, itArgs types.Iterator, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {
 	types.ForEach(itArgs, func(elem types.Object) bool {
@@ -41,11 +42,11 @@ func initFromPairs[T types.Object](env types.Environment, itArgs types.Iterator,
 }
 
 func initMapForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initFromPairs[types.Storable](env, itArgs, makeDynamic(), mapPairAdder)
+	return initFromPairs[types.Storable](env, itArgs, makeDynamicMap(), mapPairAdder)
 }
 
-func initStructForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initFromPairs[types.Environment](env, itArgs, types.MakeBaseEnvironment(), structPairAdder)
+func initStructForm(env types.Environment, itArgs types.Iterator, typeName string) types.Object {
+	return initFromPairs[types.Environment](env, itArgs, makeDynamicObject(env, typeName), structPairAdder)
 }
 
 func mapPairAdder(res types.Storable, pair *types.List, env types.Environment) {

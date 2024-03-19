@@ -19,6 +19,11 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
+const (
+	// user can not directly use this kind of id (# start a comment)
+	hiddenTypesName = "#types"
+)
+
 var Builtins = initBuitins()
 
 func initBuitins() types.BaseEnvironment {
@@ -49,6 +54,7 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(string(names.EllipsisId), types.MakeNativeAppliable(extendSliceForm))
 	base.StoreStr(names.Equal, types.MakeNativeAppliable(equalFunc))
 	base.StoreStr(names.Fallthrough, types.MakeNativeAppliable(fallthroughForm))
+	base.StoreStr(string(names.FileId), types.MakeNativeAppliable(fileForm))
 	base.StoreStr(names.For, types.MakeNativeAppliable(forForm))
 	base.StoreStr(string(names.FuncId), types.MakeNativeAppliable(funcForm))
 	base.StoreStr(string(names.GenId), types.MakeNativeAppliable(genTypeForm))

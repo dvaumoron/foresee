@@ -29,19 +29,55 @@ var (
 )
 
 // Storable accepting all key type.
-type dynamic struct {
+type dynamicMap struct {
 	types.NoneType
 	objects map[string]types.Object
 }
 
-func (d dynamic) Load(key types.Object) types.Object {
+func (d dynamicMap) Load(key types.Object) types.Object {
 	return d.objects[extractRenderString(key)]
 }
 
-func (d dynamic) Store(key types.Object, value types.Object) {
+func (d dynamicMap) Store(key types.Object, value types.Object) {
 	d.objects[extractRenderString(key)] = value
 }
 
-func makeDynamic() dynamic {
-	return dynamic{objects: map[string]types.Object{}}
+func makeDynamicMap() dynamicMap {
+	return dynamicMap{objects: map[string]types.Object{}}
+}
+
+type dynamicObject struct {
+	types.BaseEnvironment
+	objectType customType
+}
+
+func (d dynamicObject) LoadStr(key string) (types.Object, bool) {
+	res, ok := d.BaseEnvironment.LoadStr(key)
+	if ok {
+		return res, true
+	}
+
+	if res, ok = d.objectType.methods[key]; ok {
+		return res, true
+	}
+
+	return types.None, false
+}
+
+func (d dynamicObject) Load(key types.Object) types.Object {
+	return types.Load(d, key)
+}
+
+func makeDynamicObject(env types.Environment, typeName string) dynamicObject {
+	customTypes, _ := env.LoadStr(hiddenTypesName)
+	castedTypes, _ := customTypes.(types.BaseEnvironment)
+	objectType, _ := castedTypes.LoadStr(typeName)
+	castedType, _ := objectType.(customType)
+
+	return dynamicObject{BaseEnvironment: types.MakeBaseEnvironment(), objectType: castedType}
+}
+
+type customType struct {
+	types.NoneType
+	methods map[string]types.Appliable
 }

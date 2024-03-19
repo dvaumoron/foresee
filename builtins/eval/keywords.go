@@ -74,6 +74,15 @@ func fallthroughForm(env types.Environment, itArgs types.Iterator) types.Object 
 	return types.None
 }
 
+func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// init default value
+	env.StoreStr(hiddenTypesName, types.MakeBaseEnvironment())
+
+	// TODO
+
+	return types.None
+}
+
 func forForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO
 
@@ -93,9 +102,24 @@ func genTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func getForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	res, _ := itArgs.Next()
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		loadable, ok := res.(types.StringLoadable)
+		if !ok {
+			panic(errSelectableType)
+		}
 
-	return types.None
+		id, ok := elem.(types.Identifier)
+		if !ok {
+			panic(errIdentifierType)
+		}
+
+		res, _ = loadable.LoadStr(string(id))
+
+		return true
+	})
+
+	return res
 }
 
 func goForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -139,7 +163,17 @@ func listFunc(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initStructAppliable
+	arg0, ok := itArgs.Next()
+	if !ok {
+		panic(errUnarySize)
+	}
+
+	typeName := extractTypeName(arg0)
+
+	return types.MakeNativeAppliable(func(env types.Environment, itArgs types.Iterator) types.Object {
+		return initStructForm(env, itArgs, typeName)
+	})
+
 }
 
 func macroForm(env types.Environment, itArgs types.Iterator) types.Object {
