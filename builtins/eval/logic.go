@@ -20,7 +20,6 @@ import (
 )
 
 var (
-	errBooleanType    = errors.New("wait boolean value")
 	errComparableType = errors.New("wait comparable value")
 	errOrderableType  = errors.New("wait orderable value")
 )

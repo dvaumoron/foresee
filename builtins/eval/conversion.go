@@ -36,7 +36,7 @@ func extractBoolean(o types.Object) bool {
 	return true
 }
 
-func extractString(o types.Object) string {
+func extractRenderString(o types.Object) string {
 	var builder strings.Builder
 	o.Render(&builder)
 	return builder.String()

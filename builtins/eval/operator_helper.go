@@ -18,29 +18,6 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-type evalIterator struct {
-	types.NoneType
-	inner types.Iterator
-	env   types.Environment
-}
-
-func (e evalIterator) Iter() types.Iterator {
-	return e
-}
-
-func (e evalIterator) Next() (types.Object, bool) {
-	value, ok := e.inner.Next()
-	return value.Eval(e.env), ok
-}
-
-func (e evalIterator) Close() {
-	e.inner.Close()
-}
-
-func makeEvalIterator(it types.Iterator, env types.Environment) evalIterator {
-	return evalIterator{inner: it, env: env}
-}
-
 func inplaceOperatorForm(env types.Environment, itArgs types.Iterator, opStr string) types.Object {
 	arg, _ := itArgs.Next()
 	opCall := types.NewList(types.Identifier(opStr), arg).AddAll(itArgs)

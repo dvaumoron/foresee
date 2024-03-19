@@ -14,16 +14,12 @@
 package eval
 
 import (
-	"errors"
-
 	"github.com/dvaumoron/foresee/types"
 )
 
 var (
 	initMapAppliable    = types.MakeNativeAppliable(initMapForm)
 	initStructAppliable = types.MakeNativeAppliable(initStructForm)
-
-	errPairSize = errors.New("wait at least 2 elements")
 )
 
 func initFromPairs[T types.Object](env types.Environment, itArgs types.Iterator, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {

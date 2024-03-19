@@ -19,11 +19,7 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-var (
-	errIntegerType  = errors.New("wait integer value")
-	errNumericType  = errors.New("wait numeric value")
-	errZeroDivision = errors.New("division by zero")
-)
+var errZeroDivision = errors.New("division by zero")
 
 type cumulCarac struct {
 	init       int64

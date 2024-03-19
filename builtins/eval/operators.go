@@ -14,14 +14,11 @@
 package eval
 
 import (
-	"errors"
 	"strings"
 
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
-
-var errStringType = errors.New("wait string value")
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, bitwiseAndFunc)
@@ -47,13 +44,14 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 		index := 0
 		types.ForEach(casted, func(elem types.Object) bool {
 			assignFunc := buildAssignFunc(env, elem)
-			ok := assignFunc != nil
-			if ok {
-				assignFunc(values.LoadInt(index))
-				index++
+			if assignFunc == nil {
+				panic(errAssignableType)
 			}
 
-			return ok
+			assignFunc(values.LoadInt(index))
+			index++
+
+			return true
 		})
 	}
 
@@ -153,9 +151,19 @@ func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	res, _ := itArgs.Next()
+	types.ForEach(itArgs, func(elem types.Object) bool {
+		loadable, ok := res.(types.Loadable)
+		if !ok {
+			panic(errListType)
+		}
 
-	return types.None
+		res = loadable.Load(elem.Eval(env))
+
+		return true
+	})
+
+	return res
 }
 
 func leftShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {

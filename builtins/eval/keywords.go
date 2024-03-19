@@ -134,6 +134,10 @@ func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func listFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	return types.NewList().AddAll(makeEvalIterator(itArgs, env))
+}
+
 func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return initStructAppliable
 }

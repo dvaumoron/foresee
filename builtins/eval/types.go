@@ -20,8 +20,12 @@ import (
 )
 
 var (
+	errBooleanType    = errors.New("wait boolean value")
 	errIdentifierType = errors.New("wait identifier type")
+	errIntegerType    = errors.New("wait integer value")
 	errListType       = errors.New("wait list type")
+	errNumericType    = errors.New("wait numeric value")
+	errStringType     = errors.New("wait string value")
 )
 
 // Storable accepting all key type.
@@ -31,11 +35,11 @@ type dynamic struct {
 }
 
 func (d dynamic) Load(key types.Object) types.Object {
-	return d.objects[extractString(key)]
+	return d.objects[extractRenderString(key)]
 }
 
 func (d dynamic) Store(key types.Object, value types.Object) {
-	d.objects[extractString(key)] = value
+	d.objects[extractRenderString(key)] = value
 }
 
 func makeDynamic() dynamic {

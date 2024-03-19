@@ -14,11 +14,44 @@
 package eval
 
 import (
+	"errors"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
-// handle "a" as a,  "(* a)" as a and ([] a b c) as a[b][c]
+var (
+	errAssignableType = errors.New("wait assignable type")
+	errIndexableType  = errors.New("wait indexable type")
+	errPairSize       = errors.New("wait at least 2 elements")
+	errSelectableType = errors.New("wait indexable type")
+	errUnarySize      = errors.New("wait 1 argument")
+)
+
+type evalIterator struct {
+	types.NoneType
+	inner types.Iterator
+	env   types.Environment
+}
+
+func (e evalIterator) Iter() types.Iterator {
+	return e
+}
+
+func (e evalIterator) Next() (types.Object, bool) {
+	value, ok := e.inner.Next()
+	return value.Eval(e.env), ok
+}
+
+func (e evalIterator) Close() {
+	e.inner.Close()
+}
+
+func makeEvalIterator(it types.Iterator, env types.Environment) evalIterator {
+	return evalIterator{inner: it, env: env}
+}
+
+// handle "a" as a,  "(* a)" as a, "([] a b c)" as a[b][c] and "(get a b c)" as a.b.c
 func buildAssignFunc(env types.Environment, object types.Object) func(types.Object) {
 	switch casted := object.(type) {
 	case types.Identifier:
@@ -34,41 +67,76 @@ func buildAssignFunc(env types.Environment, object types.Object) func(types.Obje
 func buildAssignFuncFromList(env types.Environment, list *types.List) func(types.Object) {
 	size := list.Size()
 	switch op, _ := list.LoadInt(0).(types.Identifier); op {
-	case names.Load:
+	case names.GetId:
 		if size < 3 {
-			return nil
+			panic(errPairSize)
 		}
 
-		prevEnv, ok := env.Load(list.LoadInt(1)).(types.Storable)
+		current, ok := list.LoadInt(1).Eval(env).(types.StringLoadable)
 		if !ok {
-			return nil
+			panic(errSelectableType)
 		}
 
-		i := 3
-		index := list.LoadInt(2).Eval(env)
-		currentEnv, ok := prevEnv.Load(index).(types.Storable)
-		for i < size {
+		index, ok := list.LoadInt(2).(types.Identifier)
+		if !ok {
+			panic(errIdentifierType)
+		}
+
+		for i := 3; i < size; i++ {
+			temp, _ := current.LoadStr(string(index))
+			current, ok = temp.(types.StringLoadable)
 			if !ok {
-				break
+				panic(errSelectableType)
 			}
 
-			prevEnv = currentEnv
-			index = list.LoadInt(i).Eval(env)
-			currentEnv, ok = prevEnv.Load(index).(types.Storable)
-			i++
+			index, ok = list.LoadInt(i).(types.Identifier)
+			if !ok {
+				panic(errIdentifierType)
+			}
 		}
 
-		if i != size { // breaked
-			return nil
+		storable, ok := current.(types.Environment)
+		if !ok {
+			panic(errAssignableType)
 		}
 
 		return func(value types.Object) {
-			prevEnv.Store(index, value)
+			storable.StoreStr(string(index), value)
+		}
+	case names.Load:
+		if size < 3 {
+			panic(errPairSize)
+		}
+
+		current, ok := list.LoadInt(1).Eval(env).(types.Loadable)
+		if !ok {
+			panic(errIndexableType)
+		}
+
+		index := list.LoadInt(2).Eval(env)
+		for i := 3; i < size; i++ {
+			current, ok = current.Load(index).(types.Loadable)
+			if !ok {
+				panic(errIndexableType)
+			}
+
+			index = list.LoadInt(i).Eval(env)
+		}
+
+		storable, ok := current.(types.Storable)
+		if !ok {
+			panic(errAssignableType)
+		}
+
+		return func(value types.Object) {
+			storable.Store(index, value)
 		}
 	case names.StarId:
-		if size > 1 {
-			return buildAssignFunc(env, list.LoadInt(1))
+		if size != 1 {
+			panic(errUnarySize)
 		}
+
+		return buildAssignFunc(env, list.LoadInt(1))
 	}
 
 	return nil
