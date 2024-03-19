@@ -104,6 +104,15 @@ func buildAssignFuncFromList(env types.Environment, list *types.List) func(types
 		return func(value types.Object) {
 			storable.StoreStr(string(index), value)
 		}
+	case names.ListId:
+		id, ok := list.LoadInt(1).(types.Identifier)
+		if !ok {
+			panic(errIdentifierType)
+		}
+
+		return func(value types.Object) {
+			env.StoreStr(string(id), value)
+		}
 	case names.Load:
 		if size < 3 {
 			panic(errPairSize)
