@@ -4,8 +4,12 @@ type Addable interface {
 	Numeric | ~string
 }
 
-type Numeric interface {
-	Integer | ~float32 | ~float64 | ~complex64 | ~complex128
+type Boolean interface {
+	~bool
+}
+
+type Channel[T any] interface {
+	~chan T
 }
 
 type Integer interface {
@@ -13,6 +17,14 @@ type Integer interface {
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-type Boolean interface {
-	~bool
+type Numeric interface {
+	Integer | ~float32 | ~float64 | ~complex64 | ~complex128
+}
+
+type Receiver[T any] interface {
+	~<-chan T
+}
+
+type Sender[T any] interface {
+	~chan<- T
 }
