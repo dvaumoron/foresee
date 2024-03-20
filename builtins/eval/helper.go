@@ -28,6 +28,7 @@ var (
 	errSelectableType = errors.New("wait indexable type")
 	errTripleSize     = errors.New("wait at least 3 elements")
 	errUnarySize      = errors.New("wait 1 argument")
+	errUnimplemented  = errors.New("feature unimplemented in eval mode")
 	errUnknownField   = errors.New("field or method unknown")
 )
 

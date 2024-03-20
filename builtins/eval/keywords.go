@@ -41,10 +41,8 @@ func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func breakForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func breakForm(_ types.Environment, itArgs types.Iterator) types.Object {
+	return processLabellable(itArgs, breakKind)
 }
 
 func capForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -71,10 +69,8 @@ func constForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func continueForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+func continueForm(_ types.Environment, itArgs types.Iterator) types.Object {
+	return processLabellable(itArgs, continueKind)
 }
 
 func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -153,9 +149,7 @@ func goForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func gotoForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	panic(errUnimplemented)
 }
 
 func ifForm(env types.Environment, itArgs types.Iterator) types.Object {

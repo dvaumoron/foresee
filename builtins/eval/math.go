@@ -21,7 +21,7 @@ import (
 
 var errZeroDivision = errors.New("division by zero")
 
-type cumulCarac struct {
+type cumulKind struct {
 	init       types.Integer
 	cumulInt   func(types.Integer, types.Integer) types.Integer
 	cumulFloat func(types.Float, types.Float) types.Float
@@ -64,11 +64,11 @@ func rightShiftOperator(a, b int64) int64 {
 }
 
 var (
-	sumCarac     = cumulCarac{init: 0, cumulInt: addNumberOperator[types.Integer], cumulFloat: addNumberOperator[types.Float]}
-	productCarac = cumulCarac{init: 1, cumulInt: multNumberOperator[types.Integer], cumulFloat: multNumberOperator[types.Float]}
+	sumKind     = cumulKind{init: 0, cumulInt: addNumberOperator[types.Integer], cumulFloat: addNumberOperator[types.Float]}
+	productKind = cumulKind{init: 1, cumulInt: multNumberOperator[types.Integer], cumulFloat: multNumberOperator[types.Float]}
 )
 
-func cumulFunc(args types.Iterable, carac cumulCarac) types.Object {
+func cumulNumber(args types.Iterable, carac cumulKind) types.Object {
 	cumulI := carac.init
 	cumulF := types.Float(cumulI)
 	allNumericType, hasFloat := true, false

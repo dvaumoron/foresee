@@ -206,7 +206,7 @@ func orForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func productFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return cumulFunc(makeEvalIterator(itArgs, env), productCarac)
+	return cumulNumber(makeEvalIterator(itArgs, env), productKind)
 }
 
 func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -269,7 +269,7 @@ func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
 		return concatStrings(args)
 	}
 
-	return cumulFunc(args, sumCarac)
+	return cumulNumber(args, sumKind)
 }
 
 func sumSetForm(env types.Environment, itArgs types.Iterator) types.Object {

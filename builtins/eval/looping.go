@@ -13,14 +13,27 @@
 
 package eval
 
+import "github.com/dvaumoron/foresee/types"
+
 const (
-	Break    loopMarkerKind = iota
-	Continue loopMarkerKind = iota
+	breakKind    loopMarkerKind = iota
+	continueKind loopMarkerKind = iota
 )
 
 type loopMarkerKind int
 
 type loopMarker struct {
+	types.NoneType
 	kind  loopMarkerKind
 	label string
+}
+
+func processLabellable(itArgs types.Iterator, kind loopMarkerKind) types.Object {
+	arg0, ok1 := itArgs.Next()
+	labelId, ok2 := arg0.(types.Identifier)
+	if ok1 && !ok2 {
+		panic(errIdentifierType)
+	}
+
+	return loopMarker{kind: kind, label: string(labelId)}
 }
