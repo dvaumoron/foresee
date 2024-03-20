@@ -25,13 +25,13 @@ var (
 )
 
 type comparator struct {
-	compareInt    func(int64, int64) bool
-	compareFloat  func(float64, float64) bool
-	compareString func(string, string) bool
+	compareInt    func(types.Integer, types.Integer) bool
+	compareFloat  func(types.Float, types.Float) bool
+	compareString func(types.String, types.String) bool
 }
 
 type ordered interface {
-	number | string
+	number | types.String
 }
 
 func greaterEqual[O ordered](value0 O, value1 O) bool {
@@ -51,10 +51,10 @@ func lessThan[O ordered](value0 O, value1 O) bool {
 }
 
 var (
-	greaterEqualComparator = comparator{compareInt: greaterEqual[int64], compareFloat: greaterEqual[float64], compareString: greaterEqual[string]}
-	greaterThanComparator  = comparator{compareInt: greaterThan[int64], compareFloat: greaterThan[float64], compareString: greaterThan[string]}
-	lessEqualComparator    = comparator{compareInt: lessEqual[int64], compareFloat: lessEqual[float64], compareString: lessEqual[string]}
-	lessThanComparator     = comparator{compareInt: lessThan[int64], compareFloat: lessThan[float64], compareString: lessThan[string]}
+	greaterEqualComparator = comparator{compareInt: greaterEqual[types.Integer], compareFloat: greaterEqual[types.Float], compareString: greaterEqual[types.String]}
+	greaterThanComparator  = comparator{compareInt: greaterThan[types.Integer], compareFloat: greaterThan[types.Float], compareString: greaterThan[types.String]}
+	lessEqualComparator    = comparator{compareInt: lessEqual[types.Integer], compareFloat: lessEqual[types.Float], compareString: lessEqual[types.String]}
+	lessThanComparator     = comparator{compareInt: lessThan[types.Integer], compareFloat: lessThan[types.Float], compareString: lessThan[types.String]}
 )
 
 func compareForm(env types.Environment, itArgs types.Iterator, c comparator) types.Object {
@@ -80,16 +80,16 @@ func compare(value0 types.Object, value1 types.Object, c comparator) bool {
 	case types.Integer:
 		switch casted1 := value1.(type) {
 		case types.Integer:
-			return c.compareInt(int64(casted0), int64(casted1))
+			return c.compareInt(casted0, casted1)
 		case types.Float:
-			return c.compareFloat(float64(casted0), float64(casted1))
+			return c.compareFloat(types.Float(casted0), casted1)
 		}
 	case types.Float:
 		switch casted1 := value1.(type) {
 		case types.Integer:
-			return c.compareFloat(float64(casted0), float64(casted1))
+			return c.compareFloat(casted0, types.Float(casted1))
 		case types.Float:
-			return c.compareFloat(float64(casted0), float64(casted1))
+			return c.compareFloat(casted0, casted1)
 		}
 	case types.String:
 		casted1, ok := value1.(types.String)
@@ -97,7 +97,7 @@ func compare(value0 types.Object, value1 types.Object, c comparator) bool {
 			break
 		}
 
-		return c.compareString(string(casted0), string(casted1))
+		return c.compareString(casted0, casted1)
 	}
 	panic(errOrderableType)
 }

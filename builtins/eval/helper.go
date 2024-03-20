@@ -22,6 +22,7 @@ import (
 
 var (
 	errAssignableType = errors.New("wait assignable type")
+	errConversion     = errors.New("uncompatible for conversion")
 	errIndexableType  = errors.New("wait indexable type")
 	errPairSize       = errors.New("wait at least 2 elements")
 	errSelectableType = errors.New("wait indexable type")

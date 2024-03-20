@@ -22,13 +22,13 @@ import (
 var errZeroDivision = errors.New("division by zero")
 
 type cumulCarac struct {
-	init       int64
-	cumulInt   func(int64, int64) int64
-	cumulFloat func(float64, float64) float64
+	init       types.Integer
+	cumulInt   func(types.Integer, types.Integer) types.Integer
+	cumulFloat func(types.Float, types.Float) types.Float
 }
 
 type number interface {
-	int64 | float64
+	types.Integer | types.Float
 }
 
 func addNumberOperator[N number](a, b N) N {
@@ -64,21 +64,21 @@ func rightShiftOperator(a, b int64) int64 {
 }
 
 var (
-	sumCarac     = cumulCarac{init: 0, cumulInt: addNumberOperator[int64], cumulFloat: addNumberOperator[float64]}
-	productCarac = cumulCarac{init: 1, cumulInt: multNumberOperator[int64], cumulFloat: multNumberOperator[float64]}
+	sumCarac     = cumulCarac{init: 0, cumulInt: addNumberOperator[types.Integer], cumulFloat: addNumberOperator[types.Float]}
+	productCarac = cumulCarac{init: 1, cumulInt: multNumberOperator[types.Integer], cumulFloat: multNumberOperator[types.Float]}
 )
 
 func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) types.Object {
 	cumulI := carac.init
-	cumulF := float64(cumulI)
+	cumulF := types.Float(cumulI)
 	allNumericType, hasFloat := true, false
 	types.ForEach(itArgs, func(arg types.Object) bool {
 		switch casted := arg.Eval(env).(type) {
 		case types.Integer:
-			cumulI = carac.cumulInt(cumulI, int64(casted))
+			cumulI = carac.cumulInt(cumulI, casted)
 		case types.Float:
 			hasFloat = true
-			cumulF = carac.cumulFloat(cumulF, float64(casted))
+			cumulF = carac.cumulFloat(cumulF, casted)
 		default:
 			allNumericType = false
 		}
@@ -90,10 +90,10 @@ func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) t
 	}
 
 	if hasFloat {
-		return types.Float(carac.cumulFloat(float64(cumulI), cumulF))
+		return carac.cumulFloat(types.Float(cumulI), cumulF)
 	}
 
-	return types.Integer(cumulI)
+	return cumulI
 }
 
 func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
@@ -107,7 +107,6 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 		case types.Float:
 			return -casted
 		}
-
 		panic(errNumericType)
 	}
 
@@ -118,19 +117,18 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	case types.Integer:
 		switch casted2 := sumFunc(env, itArgs).(type) {
 		case types.Integer:
-			return types.Integer(casted - casted2)
+			return casted - casted2
 		case types.Float:
-			return types.Float(float64(casted) - float64(casted2))
+			return types.Float(casted) - casted2
 		}
 	case types.Float:
 		switch casted2 := sumFunc(env, itArgs).(type) {
 		case types.Integer:
-			return types.Float(float64(casted) - float64(casted2))
+			return casted - types.Float(casted2)
 		case types.Float:
-			return types.Float(casted - casted2)
+			return casted - casted2
 		}
 	}
-
 	panic(errNumericType)
 }
 
@@ -138,25 +136,28 @@ func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		return divideObject(float64(casted), productFunc(env, itArgs))
+		return divideObject(types.Float(casted), productFunc(env, itArgs))
 	case types.Float:
-		return divideObject(float64(casted), productFunc(env, itArgs))
+		return divideObject(casted, productFunc(env, itArgs))
 	}
 	panic(errNumericType)
 }
 
-func divideObject(a float64, b types.Object) types.Object {
+func divideObject(a types.Float, b types.Object) types.Object {
 	switch casted := b.(type) {
 	case types.Integer:
-		if casted != 0 {
-			return types.Float(a / float64(casted))
-		}
+		return divideFloat(a, types.Float(casted))
 	case types.Float:
-		if casted != 0 {
-			return types.Float(a / float64(casted))
-		}
+		return divideFloat(a, casted)
 	}
 	panic(errNumericType)
+}
+
+func divideFloat(a types.Float, b types.Float) types.Object {
+	if b == 0 {
+		panic(errZeroDivision)
+	}
+	return a / b
 }
 
 func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {

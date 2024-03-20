@@ -13,7 +13,10 @@
 
 package eval
 
-import "github.com/dvaumoron/foresee/types"
+import (
+	"github.com/dvaumoron/foresee/builtins/names"
+	"github.com/dvaumoron/foresee/types"
+)
 
 func appendForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO wrap native append behavior
@@ -198,7 +201,25 @@ func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
 	typeName := extractTypeName(arg0)
 
 	return types.MakeNativeAppliable(func(env types.Environment, itArgs types.Iterator) types.Object {
-		return initStructForm(env, itArgs, typeName)
+		args := types.NewList().AddAll(itArgs)
+		if args.Size() != 1 {
+			return initStruct(env, args, typeName)
+		}
+
+		arg1 := args.LoadInt(0)
+		if casted, ok := arg1.(*types.List); ok {
+			if id, _ := casted.LoadInt(0).(types.Identifier); id == names.ListId {
+				return initStruct(env, args, typeName)
+			}
+		}
+
+		casted, ok := arg1.Eval(env).(dynamicObject)
+		if !ok {
+			panic(errConversion)
+		}
+
+		// type conversion
+		return copyStruct(env, casted, typeName)
 	})
 
 }

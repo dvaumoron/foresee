@@ -36,8 +36,38 @@ func extractBoolean(o types.Object) bool {
 	return true
 }
 
+func extractFloat(o types.Object) float64 {
+	switch casted := o.(type) {
+	case types.Integer:
+		return float64(casted)
+	case types.Float:
+		return float64(casted)
+	}
+	panic(errNumericType)
+}
+
+func extractInteger(o types.Object) int64 {
+	switch casted := o.(type) {
+	case types.Integer:
+		return int64(casted)
+	case types.Float:
+		return int64(casted)
+	}
+	panic(errNumericType)
+}
+
 func extractRenderString(o types.Object) string {
 	var builder strings.Builder
 	o.Render(&builder)
 	return builder.String()
+}
+
+func floatConvFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	arg, _ := itArgs.Next()
+	return types.Float(extractFloat(arg.Eval(env)))
+}
+
+func intConvFunc(env types.Environment, itArgs types.Iterator) types.Object {
+	arg, _ := itArgs.Next()
+	return types.Integer(extractInteger(arg.Eval(env)))
 }

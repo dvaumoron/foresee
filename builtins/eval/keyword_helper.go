@@ -20,6 +20,10 @@ import (
 
 var initMapAppliable = types.MakeNativeAppliable(initMapForm)
 
+func copyStruct(env types.Environment, args types.Iterable, typeName string) types.Object {
+	return initFromPairs[types.Environment](env, args, makeDynamicObject(env, typeName), copyPairAdder)
+}
+
 func extractTypeName(o types.Object) string {
 	switch casted := o.(type) {
 	case types.Identifier:
@@ -32,8 +36,8 @@ func extractTypeName(o types.Object) string {
 	panic(errIdentifierType)
 }
 
-func initFromPairs[T types.Object](env types.Environment, itArgs types.Iterator, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {
-	types.ForEach(itArgs, func(elem types.Object) bool {
+func initFromPairs[T types.Object](env types.Environment, args types.Iterable, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {
+	types.ForEach(args, func(elem types.Object) bool {
 		pair, ok := elem.(*types.List)
 		if !ok {
 			panic(errListType)
@@ -54,8 +58,17 @@ func initMapForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return initFromPairs[types.Storable](env, itArgs, makeDynamicMap(), mapPairAdder)
 }
 
-func initStructForm(env types.Environment, itArgs types.Iterator, typeName string) types.Object {
-	return initFromPairs[types.Environment](env, itArgs, makeDynamicObject(env, typeName), structPairAdder)
+func initStruct(env types.Environment, args types.Iterable, typeName string) types.Object {
+	return initFromPairs[types.Environment](env, args, makeDynamicObject(env, typeName), structPairAdder)
+}
+
+func copyPairAdder(res types.Environment, pair *types.List, _ types.Environment) {
+	id, ok := pair.LoadInt(0).(types.String)
+	if !ok {
+		panic(errStringType)
+	}
+
+	res.StoreStr(string(id), pair.LoadInt(1))
 }
 
 func mapPairAdder(res types.Storable, pair *types.List, env types.Environment) {
