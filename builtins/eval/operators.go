@@ -113,7 +113,10 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 		panic(errUnknownField)
 	}
 
-	return curryMethod(d, method)
+	augmentedItArgs := types.NewList(d).AddAll(itArgs).Iter()
+	defer augmentedItArgs.Close()
+
+	return method.Apply(env, augmentedItArgs)
 }
 
 func concatFunc(env types.Environment, itArgs types.Iterator) types.Object {
