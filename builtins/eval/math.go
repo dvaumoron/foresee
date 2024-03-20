@@ -100,6 +100,7 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
+		// unary version
 		switch casted := arg0.Eval(env).(type) {
 		case types.Integer:
 			return -casted
