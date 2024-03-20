@@ -98,6 +98,21 @@ func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) t
 
 func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		switch casted := arg0.Eval(env).(type) {
+		case types.Integer:
+			return -casted
+		case types.Float:
+			return -casted
+		}
+
+		panic(errNumericType)
+	}
+
+	itArgs = types.NewList(arg1).AddAll(itArgs).Iter()
+	defer itArgs.Close()
+
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
 		switch casted2 := sumFunc(env, itArgs).(type) {
@@ -114,6 +129,7 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 			return types.Float(casted - casted2)
 		}
 	}
+
 	panic(errNumericType)
 }
 
