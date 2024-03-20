@@ -78,7 +78,6 @@ func initBuitins() types.BaseEnvironment {
 	base.StoreStr(names.Label, types.MakeNativeAppliable(labelForm))
 	base.StoreStr(names.Lambda, types.MakeNativeAppliable(lambdaForm))
 	base.StoreStr(names.Lesser, types.MakeNativeAppliable(lesserForm))
-	base.StoreStr(names.Lesser, types.MakeNativeAppliable(lesserForm))
 	base.StoreStr(names.LesserEqual, types.MakeNativeAppliable(lesserEqualForm))
 	base.StoreStr(string(names.LitId), types.MakeNativeAppliable(literalForm))
 	base.StoreStr(names.Load, types.MakeNativeAppliable(indexOrSliceForm))

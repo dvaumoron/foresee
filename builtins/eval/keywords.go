@@ -80,7 +80,7 @@ func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func deferForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	// TODO use an appliable stack in env ?
 
 	return types.None
 }
@@ -92,9 +92,7 @@ func deleteForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func fallthroughForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
+	return loopMarker{kind: fallthroughKind}
 }
 
 func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -165,7 +163,7 @@ func importForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	// TODO use a label stack in env ?
 
 	return types.None
 }

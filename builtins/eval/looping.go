@@ -16,8 +16,9 @@ package eval
 import "github.com/dvaumoron/foresee/types"
 
 const (
-	breakKind    loopMarkerKind = iota
-	continueKind loopMarkerKind = iota
+	breakKind       loopMarkerKind = iota
+	continueKind    loopMarkerKind = iota
+	fallthroughKind loopMarkerKind = iota
 )
 
 type loopMarkerKind int
