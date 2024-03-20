@@ -33,7 +33,6 @@ var (
 	Builtins = initBuitins()
 )
 
-// TODO improve operator priorities ? (currently handled with parenthesis)
 func Compile(l *types.List) types.Object {
 	return l.Eval(compileEnvironment{Environment: types.MakeLocalEnvironment(Builtins)})
 }
