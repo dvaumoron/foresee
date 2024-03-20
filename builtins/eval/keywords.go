@@ -237,7 +237,7 @@ func makeForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func mapTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initMapAppliable
+	return initOrConvertMapAppliable
 }
 
 func newForm(env types.Environment, itArgs types.Iterator) types.Object {

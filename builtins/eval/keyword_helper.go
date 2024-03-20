@@ -18,10 +18,10 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-var initMapAppliable = types.MakeNativeAppliable(initMapForm)
+var initOrConvertMapAppliable = types.MakeNativeAppliable(initOrConverMapForm)
 
-func copyStruct(env types.Environment, args types.Iterable, typeName string) types.Object {
-	return initFromPairs[types.Environment](env, args, makeDynamicObject(env, typeName), copyPairAdder)
+func copyStruct(env types.Environment, src types.Iterable, typeName string) types.Object {
+	return initFromPairs[types.Environment](env, src, makeDynamicObject(env, typeName), 2, copyPairAdder)
 }
 
 func extractTypeName(o types.Object) string {
@@ -36,13 +36,13 @@ func extractTypeName(o types.Object) string {
 	panic(errIdentifierType)
 }
 
-func initFromPairs[T types.Object](env types.Environment, args types.Iterable, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {
+func initFromPairs[T types.Object](env types.Environment, args types.Iterable, o T, tooSmallSize int, pairAdder func(T, *types.List, types.Environment)) types.Object {
 	types.ForEach(args, func(elem types.Object) bool {
 		pair, ok := elem.(*types.List)
 		if !ok {
 			panic(errListType)
 		}
-		if pair.Size() < 3 {
+		if pair.Size() < tooSmallSize {
 			panic(errPairSize)
 		}
 
@@ -54,12 +54,30 @@ func initFromPairs[T types.Object](env types.Environment, args types.Iterable, o
 	return o
 }
 
-func initMapForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return initFromPairs[types.Storable](env, itArgs, makeDynamicMap(), mapPairAdder)
+func initOrConverMapForm(env types.Environment, itArgs types.Iterator) types.Object {
+	args := types.NewList().AddAll(itArgs)
+	if args.Size() != 1 {
+		return initFromPairs[types.Storable](env, itArgs, makeDynamicMap(), 3, mapPairAdder)
+	}
+
+	arg1 := args.LoadInt(0)
+	if casted, ok := arg1.(*types.List); ok {
+		if id, _ := casted.LoadInt(0).(types.Identifier); id == names.ListId {
+			return initFromPairs[types.Storable](env, itArgs, makeDynamicMap(), 3, mapPairAdder)
+		}
+	}
+
+	casted, ok := arg1.Eval(env).(dynamicMap)
+	if !ok {
+		panic(errConversion)
+	}
+
+	// type conversion case (nothing to do, eval mode does not track map subtype)
+	return casted
 }
 
 func initStruct(env types.Environment, args types.Iterable, typeName string) types.Object {
-	return initFromPairs[types.Environment](env, args, makeDynamicObject(env, typeName), structPairAdder)
+	return initFromPairs[types.Environment](env, args, makeDynamicObject(env, typeName), 3, structPairAdder)
 }
 
 func copyPairAdder(res types.Environment, pair *types.List, _ types.Environment) {

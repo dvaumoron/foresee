@@ -90,3 +90,11 @@ type customType struct {
 	types.NoneType
 	methods map[string]types.Appliable
 }
+
+func (c customType) LoadStr(key string) (types.Object, bool) {
+	if method, ok := c.methods[key]; ok {
+		return method, true
+	}
+
+	return types.None, false
+}
