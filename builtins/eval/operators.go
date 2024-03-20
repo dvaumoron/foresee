@@ -21,6 +21,7 @@ import (
 )
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO improve adressing and dereferencing eval with boxing and unboxing behavior
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, bitwiseAndFunc)
 }
 
@@ -91,9 +92,28 @@ func bitwiseXOrFunc(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	arg0, _ := itArgs.Next()
+	arg1, ok := itArgs.Next()
+	if !ok {
+		panic(errPairSize)
+	}
 
-	return types.None
+	d, ok := arg0.Eval(env).(dynamicObject)
+	if !ok {
+		panic(errObjectType)
+	}
+
+	methodId, ok := arg1.(types.Identifier)
+	if !ok {
+		panic(errIdentifierType)
+	}
+
+	method, ok := d.objectType.methods[string(methodId)]
+	if !ok {
+		panic(errUnknownField)
+	}
+
+	return curryMethod(d, method)
 }
 
 func concatFunc(env types.Environment, itArgs types.Iterator) types.Object {
@@ -211,7 +231,7 @@ func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
+	// TODO channel wrapper type
 
 	return types.None
 }

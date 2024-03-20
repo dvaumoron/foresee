@@ -14,13 +14,22 @@
 package eval
 
 import (
+	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
 var initMapAppliable = types.MakeNativeAppliable(initMapForm)
 
-func extractTypeName(_ types.Object) string {
-	return "todo"
+func extractTypeName(o types.Object) string {
+	switch casted := o.(type) {
+	case types.Identifier:
+		return string(casted)
+	case *types.List:
+		if op, _ := casted.LoadInt(0).(types.Identifier); op == names.AmpersandId || op == names.GenId || op == names.LitId {
+			return extractTypeName(casted.LoadInt(1)) // no need to test for too short list : LoadInt call return None, recursive call panic the same way.
+		}
+	}
+	panic(errIdentifierType)
 }
 
 func initFromPairs[T types.Object](env types.Environment, itArgs types.Iterator, o T, pairAdder func(T, *types.List, types.Environment)) types.Object {

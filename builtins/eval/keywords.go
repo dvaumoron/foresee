@@ -15,6 +15,12 @@ package eval
 
 import "github.com/dvaumoron/foresee/types"
 
+func appendForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native append behavior
+
+	return types.None
+}
+
 func assertForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO add a matching test ?
 
@@ -38,8 +44,20 @@ func breakForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func capForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native cap behavior
+
+	return types.None
+}
+
 func caseForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO
+
+	return types.None
+}
+
+func closeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native close behavior
 
 	return types.None
 }
@@ -64,6 +82,12 @@ func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
 
 func deferForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO
+
+	return types.None
+}
+
+func deleteForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native delete behavior
 
 	return types.None
 }
@@ -95,12 +119,6 @@ func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func genTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
-	// TODO
-
-	return types.None
-}
-
 func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 	res, _ := itArgs.Next()
 	types.ForEach(itArgs, func(elem types.Object) bool {
@@ -114,7 +132,10 @@ func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 			panic(errIdentifierType)
 		}
 
-		res, _ = loadable.LoadStr(string(id))
+		res, ok = loadable.LoadStr(string(id))
+		if !ok {
+			panic(errUnknownField)
+		}
 
 		return true
 	})
@@ -158,6 +179,12 @@ func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func lenForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native len behavior
+
+	return types.None
+}
+
 func listFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.NewList().AddAll(makeEvalIterator(itArgs, env))
 }
@@ -182,8 +209,20 @@ func macroForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
+func makeForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native make behavior
+
+	return types.None
+}
+
 func mapTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return initMapAppliable
+}
+
+func newForm(env types.Environment, itArgs types.Iterator) types.Object {
+	// TODO wrap native new behavior
+
+	return types.None
 }
 
 func rangeForm(env types.Environment, itArgs types.Iterator) types.Object {

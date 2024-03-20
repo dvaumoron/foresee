@@ -25,6 +25,7 @@ var (
 	errIntegerType    = errors.New("wait integer value")
 	errListType       = errors.New("wait list type")
 	errNumericType    = errors.New("wait numeric value")
+	errObjectType     = errors.New("type without methods")
 	errStringType     = errors.New("wait string value")
 )
 
@@ -51,15 +52,22 @@ type dynamicObject struct {
 	objectType customType
 }
 
+func curryMethod(d dynamicObject, method types.Appliable) types.NativeAppliable {
+	return types.MakeNativeAppliable(func(env types.Environment, itArgs types.Iterator) types.Object {
+		augmentedItArgs := types.NewList(d).AddAll(itArgs).Iter()
+		defer augmentedItArgs.Close()
+
+		return method.Apply(env, augmentedItArgs)
+	})
+}
+
 func (d dynamicObject) LoadStr(key string) (types.Object, bool) {
-	res, ok := d.BaseEnvironment.LoadStr(key)
-	if ok {
+	if res, ok := d.BaseEnvironment.LoadStr(key); ok {
 		return res, true
 	}
 
-	if res, ok = d.objectType.methods[key]; ok {
-		// TODO currying
-		return res, true
+	if method, ok := d.objectType.methods[key]; ok {
+		return curryMethod(d, method), true
 	}
 
 	return types.None, false

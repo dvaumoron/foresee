@@ -27,6 +27,7 @@ var (
 	errSelectableType = errors.New("wait indexable type")
 	errTripleSize     = errors.New("wait at least 3 elements")
 	errUnarySize      = errors.New("wait 1 argument")
+	errUnknownField   = errors.New("field or method unknown")
 )
 
 type evalIterator struct {
