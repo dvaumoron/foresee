@@ -14,15 +14,13 @@
 package eval
 
 import (
-	"strings"
-
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
 func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO improve adressing and dereferencing eval with boxing and unboxing behavior
-	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, bitwiseAndFunc)
+	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstForm, bitwiseAndFunc)
 }
 
 func andForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -119,30 +117,12 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return method.Apply(env, augmentedItArgs)
 }
 
-func concatFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	allString := true
-	var temp types.String
-	var builder strings.Builder
-	types.ForEach(itArgs, func(arg types.Object) bool {
-		temp, allString = arg.Eval(env).(types.String)
-		builder.WriteString(string(temp))
-
-		return allString
-	})
-
-	if !allString {
-		panic(errStringType)
-	}
-
-	return types.String(builder.String())
-}
-
 func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return inplaceUnaryOperatorForm(env, itArgs, names.Minus)
 }
 
 func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
-	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstOp, productFunc)
+	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstForm, productFunc)
 }
 
 func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -226,7 +206,7 @@ func orForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func productFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return cumulFunc(env, itArgs, productCarac)
+	return cumulFunc(makeEvalIterator(itArgs, env), productCarac)
 }
 
 func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
@@ -284,16 +264,12 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 }
 
 func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	args := types.NewList().AddAll(itArgs)
-
-	itArgs = args.Iter()
-	defer itArgs.Close()
-
+	args := types.NewList().AddAll(makeEvalIterator(itArgs, env))
 	if _, isString := args.LoadInt(0).(types.String); isString {
-		return concatFunc(env, itArgs)
+		return concatStrings(args)
 	}
 
-	return cumulFunc(env, itArgs, sumCarac)
+	return cumulFunc(args, sumCarac)
 }
 
 func sumSetForm(env types.Environment, itArgs types.Iterator) types.Object {

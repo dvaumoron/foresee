@@ -14,9 +14,29 @@
 package eval
 
 import (
+	"strings"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
+
+func concatStrings(args types.Iterable) types.Object {
+	allString := true
+	var temp types.String
+	var builder strings.Builder
+	types.ForEach(args, func(arg types.Object) bool {
+		temp, allString = arg.(types.String)
+		builder.WriteString(string(temp))
+
+		return allString
+	})
+
+	if !allString {
+		panic(errStringType)
+	}
+
+	return types.String(builder.String())
+}
 
 func inplaceOperatorForm(env types.Environment, itArgs types.Iterator, opStr string) types.Object {
 	arg, _ := itArgs.Next()

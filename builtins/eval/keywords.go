@@ -27,7 +27,7 @@ func appendForm(env types.Environment, itArgs types.Iterator) types.Object {
 func assertForm(env types.Environment, itArgs types.Iterator) types.Object {
 	// TODO add a matching test ?
 
-	return evalFirstOp(env, itArgs)
+	return evalFirstForm(env, itArgs)
 }
 
 func blockForm(env types.Environment, itArgs types.Iterator) types.Object {

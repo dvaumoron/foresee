@@ -68,12 +68,12 @@ var (
 	productCarac = cumulCarac{init: 1, cumulInt: multNumberOperator[types.Integer], cumulFloat: multNumberOperator[types.Float]}
 )
 
-func cumulFunc(env types.Environment, itArgs types.Iterator, carac cumulCarac) types.Object {
+func cumulFunc(args types.Iterable, carac cumulCarac) types.Object {
 	cumulI := carac.init
 	cumulF := types.Float(cumulI)
 	allNumericType, hasFloat := true, false
-	types.ForEach(itArgs, func(arg types.Object) bool {
-		switch casted := arg.Eval(env).(type) {
+	types.ForEach(args, func(arg types.Object) bool {
+		switch casted := arg.(type) {
 		case types.Integer:
 			cumulI = carac.cumulInt(cumulI, casted)
 		case types.Float:

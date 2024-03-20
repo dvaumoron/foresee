@@ -128,7 +128,7 @@ func initBuitins() types.BaseEnvironment {
 	return base
 }
 
-func evalFirstOp(env types.Environment, itArgs types.Iterator) types.Object {
+func evalFirstForm(env types.Environment, itArgs types.Iterator) types.Object {
 	args0, _ := itArgs.Next()
 
 	return args0.Eval(env)
