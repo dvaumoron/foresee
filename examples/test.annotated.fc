@@ -23,7 +23,7 @@ func MakeAdderInt(a:int) adderInt
 func (a adderInt) Add(b:int) int
     return (+ a.value b) 
 
-func Addition<T0:any,T1:any> (a:guessed0<T0,T1> b:T0) T1
+func Addition<T0:any, T1:any> (a:guessed0<T0, T1> b:T0) T1
 	return (. a Add b)
 
 func UseAdder() # no return
