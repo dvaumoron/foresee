@@ -2,7 +2,7 @@ package goal
 
 import "github.com/dvaumoron/foresee/base"
 
-type guessed0<T0:any,T1:any> interface
+type guessed0<T0:any, T1:any> interface
 	Add(T0) T1
 
 type adder<T:base.Addable> struct
