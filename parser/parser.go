@@ -22,10 +22,7 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-var (
-	errIndent  = errors.New("identation not consistent")
-	errUnended = errors.New("unended string")
-)
+var errIndent = errors.New("identation not consistent")
 
 type stack[T any] struct {
 	inner []T
@@ -51,90 +48,37 @@ func newStack[T any]() *stack[T] {
 }
 
 func Parse(str string) (*types.List, error) {
-	indentStack := newStack[int]()
-	indentStack.push(0)
+	tokens, err := splitIndentToSyntax(str)
+	if err != nil {
+		return nil, err
+	}
+
 	listStack := newStack[*types.List]()
 	res := types.NewList(names.FileId)
 	listStack.push(res)
 	manageOpen(listStack)
-	var err error
-LineLoop:
-	for _, line := range strings.Split(str, "\n") {
-		if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
-			index := 0
-			var char rune
-			for index, char = range line {
-				if !unicode.IsSpace(char) {
-					if top := indentStack.peek(); top < index {
-						indentStack.push(index)
-					} else {
-						listStack.pop()
-						if top != index {
-							indentStack.pop()
-							for top = indentStack.peek(); top > index; top = indentStack.peek() {
-								listStack.pop()
-								indentStack.pop()
-							}
-							if top < index {
-								err = errIndent
-								break LineLoop
-							}
-							listStack.pop()
-						}
-					}
-					manageOpen(listStack)
-					break
-				}
-			}
-			words := make(chan string)
-			done := make(chan types.NoneType)
-			go handleWord(words, listStack, done)
-			chars := make(chan rune)
-			go sendChar(chars, line[index:])
-			var buildingWord []rune
-			for char := range chars {
-				switch {
-				case unicode.IsSpace(char):
-					buildingWord = sendReset(words, buildingWord)
-				case char == '(', char == ')':
-					buildingWord = sendReset(words, buildingWord)
-					words <- string(char)
-				case char == '"', char == '\'':
-					buildingWord, err = readUntil(buildingWord, chars, char)
-					if err != nil {
-						break LineLoop
-					}
-				case char == '#':
-					finishLine(words, buildingWord, done)
-					continue LineLoop
-				default:
-					buildingWord = append(buildingWord, char)
-				}
-			}
-			finishLine(words, buildingWord, done)
-		}
+	for _, token := range tokens {
+		handleToken(token, listStack)
 	}
+
 	return res, err
+}
+
+func handleToken(token string, listStack *stack[*types.List]) {
+	switch token {
+	case "(":
+		manageOpen(listStack)
+	case ")":
+		listStack.pop()
+	default:
+		listStack.peek().Add(handleWord(token))
+	}
 }
 
 func manageOpen(listStack *stack[*types.List]) {
 	current := types.NewList()
 	listStack.peek().Add(current)
 	listStack.push(current)
-}
-
-func handleWord(words <-chan string, listStack *stack[*types.List], done chan<- types.NoneType) {
-	for word := range words {
-		switch word {
-		case "(":
-			manageOpen(listStack)
-		case ")":
-			listStack.pop()
-		default:
-			listStack.peek().Add(HandleClassicWord(word))
-		}
-	}
-	done <- types.None
 }
 
 func sendChar(chars chan<- rune, line string) {
@@ -144,37 +88,110 @@ func sendChar(chars chan<- rune, line string) {
 	close(chars)
 }
 
-func sendReset(words chan<- string, buildingWord []rune) []rune {
-	if len(buildingWord) != 0 {
-		words <- string(buildingWord)
-		// doesn't realloc memmory
-		buildingWord = buildingWord[:0]
-	}
-	return buildingWord
-}
+func splitIndentToSyntax(str string) ([]string, error) {
+	indentStack := newStack[int]()
+	indentStack.push(0)
 
-func readUntil(buildingWord []rune, chars <-chan rune, delim rune) ([]rune, error) {
-	unended := true
-	buildingWord = append(buildingWord, delim)
-CharLoop:
-	for char := range chars {
-		buildingWord = append(buildingWord, char)
-		switch char {
-		case delim:
-			unended = false
-			break CharLoop
-		case '\\':
-			buildingWord = append(buildingWord, <-chars)
+	var splitted []string
+	for _, line := range strings.Split(str, "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
+			index := 0
+			var char rune
+			for index, char = range line {
+				if !unicode.IsSpace(char) {
+					if top := indentStack.peek(); top < index {
+						indentStack.push(index)
+					} else {
+						splitted = append(splitted, ")")
+						if top > index {
+							indentStack.pop()
+							for top = indentStack.peek(); top > index; top = indentStack.peek() {
+								splitted = append(splitted, ")")
+								indentStack.pop()
+							}
+							if top < index {
+								return nil, errIndent
+							}
+							splitted = append(splitted, ")")
+						}
+					}
+					splitted = append(splitted, "(")
+					break
+				}
+			}
+
+			tokens, err := splitTokens(line[index:])
+			if err != nil {
+				return nil, err
+			}
+			splitted = append(splitted, tokens...)
 		}
 	}
-	if unended {
-		return nil, errUnended
-	}
-	return buildingWord, nil
+	return splitted, nil
 }
 
-func finishLine(words chan<- string, buildingWord []rune, done <-chan types.NoneType) {
-	sendReset(words, buildingWord)
-	close(words)
-	<-done
+func splitTokens(line string) ([]string, error) {
+	chars := make(chan rune)
+	go sendChar(chars, line)
+
+	var err error
+	var buffer []rune
+	var splitted []string
+	for char := range chars {
+		switch {
+		case unicode.IsSpace(char):
+			splitted, buffer = appendBuffer(splitted, buffer)
+		case char == '(', char == ')':
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = append(splitted, string(char))
+		case char == '"', char == '\'':
+			buffer, err = readUntil(buffer, chars, char)
+			if err != nil {
+				return nil, err
+			}
+		case char == '[':
+			buffer, err = readSub(buffer, chars, '[', ']')
+			if err != nil {
+				return nil, err
+			}
+		case char == '{':
+			buffer, err = readSub(buffer, chars, '{', '}')
+			if err != nil {
+				return nil, err
+			}
+		case char == '<':
+			subBuffer, err := readSub(nil, chars, '<', '>')
+			if err != nil {
+				if err == errParsingParent { // to handle "<", "<=" and "<-"
+					subBuffer[0] = '|' // replace '<' (avoid infinite recursion)
+					subTokens, err := splitTokens(string(subBuffer))
+					if err != nil {
+						return nil, err
+					}
+
+					buffer = append(buffer, '<')               // add back '<'
+					for _, subChar := range subTokens[0][1:] { // skip the placeholder
+						buffer = append(buffer, subChar)
+					}
+
+					splitted, buffer = appendBuffer(splitted, buffer)
+					splitted = append(splitted, subTokens[1:]...)
+
+					continue
+				}
+
+				return nil, err
+			}
+			buffer = append(buffer, subBuffer...)
+		case char == ']', char == '}':
+			return nil, errParsingWrongClosing
+		case char == '#':
+			for range chars { // read the rest of the line (avoid go routine leak)
+			}
+		default:
+			buffer = append(buffer, char)
+		}
+	}
+	splitted, _ = appendBuffer(splitted, buffer)
+	return splitted, nil
 }
