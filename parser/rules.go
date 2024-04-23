@@ -18,21 +18,22 @@ import (
 	"strings"
 
 	"github.com/dvaumoron/foresee/builtins/names"
+	"github.com/dvaumoron/foresee/parser/split"
 	"github.com/dvaumoron/foresee/types"
 )
 
 var (
-	wordParsers []ConvertString
+	sliceParsers []SliceParser
 
 	// an empty environment to execute custom rules
 	BuiltinsCopy types.Environment = types.MakeBaseEnvironment()
 )
 
-type ConvertString = func(string) (types.Object, bool)
+type SliceParser = func([]split.Node) (types.Object, int)
 
 // needed to prevent a cycle in the initialisation
 func init() {
-	wordParsers = []ConvertString{
+	sliceParsers = []SliceParser{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
 		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseNot, parseArrowChanType, parseChanArrowType, parseChanType,
 		parseArrayOrSliceType, parseMapType, parseFuncType, parseGenericType, parseDotField,
@@ -42,24 +43,30 @@ func init() {
 // Must be called before the parsing of files to affect them
 func AddCustomRule(rule types.Appliable) {
 	// TODO use a mutex ? (will macro or parsing run concurrently ???)
-	wordParsers = append(wordParsers, func(word string) (types.Object, bool) {
-		args := types.NewList(types.String(word))
+	sliceParsers = append(sliceParsers, func([]split.Node) (types.Object, int) {
+		args := types.NewList(types.String("todo"))
 		node := rule.Apply(BuiltinsCopy, args)
 		// The Apply must return None if it fails.
-		_, isNone := node.(types.NoneType)
-		return node, !isNone
+		if _, isNone := node.(types.NoneType); isNone {
+			return types.None, 0
+		}
+		return types.None, 1
 	})
 }
 
 // try to apply parsing rule in order (including custom rules),
 // fallback to an identifier when nothing matches
-func handleWord(word string) types.Object {
-	for _, parser := range wordParsers {
-		if node, match := parser(word); match {
-			return node
+func handleWord(sliced []split.Node) (types.Object, int) {
+	for _, parser := range sliceParsers {
+		if node, consumed := parser(sliced); consumed != 0 {
+			return node, consumed
 		}
 	}
-	return types.Identifier(word)
+
+	if _, s, _ := sliced[0].Cast(); s != "" {
+		return types.Identifier(s), 1
+	}
+	return nil, 0
 }
 
 // empty string are handled as None, otherwise call handleWord
@@ -92,14 +99,15 @@ func handleChanType(word string, prefix string, typeId types.Identifier) (types.
 }
 
 // handle "&value" as (& value)
-func parseAddressing(word string) (types.Object, bool) {
+func parseAddressing(sliced []split.Node) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
 	// test len to keep the basic identifier case
-	if word[0] != '&' || len(word) == 1 ||
-		word == names.And || word == names.AndAssign ||
-		word == names.AndNot || word == names.AndNotAssign {
-		return nil, false
+	if s[0] != '&' || len(s) == 1 ||
+		s == names.And || s == names.AndAssign ||
+		s == names.AndNot || s == names.AndNotAssign {
+		return nil, 0
 	}
-	return types.NewList(names.AmpersandId, handleSubWord(word[1:])), true
+	return types.NewList(names.AmpersandId, handleSubWord(s[1:])), 1
 }
 
 // handle "[n]type" or "[]type" as (slice n type) or (slice type)
@@ -134,12 +142,12 @@ func parseChanType(word string) (types.Object, bool) {
 }
 
 // handle "*a" as (* a)
-func parseDereference(word string) (types.Object, bool) {
+func parseDereference(sliced []split.Node) (types.Object, int) {
 	// test len to keep the basic identifier case
-	if word[0] != '*' || len(word) == 1 || word == names.MultAssign {
-		return nil, false
+	if _, s, _ := sliced[0].Cast(); s[0] == '*' && len(s) != 1 && s != names.MultAssign {
+		return types.NewList(names.StarId, handleSubWord(s[1:])), 1
 	}
-	return types.NewList(names.StarId, handleSubWord(word[1:])), true
+	return nil, 0
 }
 
 // handle "a.b.c" as (get a b c)
@@ -152,21 +160,27 @@ func parseDotField(word string) (types.Object, bool) {
 }
 
 // handle "...type" as (... type)
-func parseEllipsis(word string) (types.Object, bool) {
+func parseEllipsis(sliced []split.Node) (types.Object, int) {
 	// test len to keep the basic identifier case
-	if !strings.HasPrefix(word, string(names.EllipsisId)) || len(word) == 3 {
-		return nil, false
+	if _, s, _ := sliced[0].Cast(); strings.HasPrefix(s, string(names.EllipsisId)) && len(s) != 3 {
+		return types.NewList(names.EllipsisId, handleSubWord(s[3:])), 1
 	}
-	return types.NewList(names.EllipsisId, handleSubWord(word[3:])), true
+	return nil, 0
 }
 
-func parseFalse(word string) (types.Object, bool) {
-	return types.Boolean(false), word == "false"
+func parseFalse(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s == "false" {
+		return types.Boolean(false), 1
+	}
+	return nil, 0
 }
 
-func parseFloat(word string) (types.Object, bool) {
-	f, err := strconv.ParseFloat(word, 64)
-	return types.Float(f), err == nil
+func parseFloat(sliced []split.Node) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
+	if f, err := strconv.ParseFloat(s, 64); err == nil {
+		return types.Float(f), 1
+	}
+	return nil, 0
 }
 
 // handle "func[typeList]typeList2" as (func typeList typeList2),
@@ -209,9 +223,12 @@ func parseGenericType(word string) (types.Object, bool) {
 	return types.NewList(names.GenId, handleSubWord(word[:index]), handleTypeList(word[index+1:lastIndex])), true
 }
 
-func parseInt(word string) (types.Object, bool) {
-	i, err := strconv.ParseInt(word, 10, 64)
-	return types.Integer(i), err == nil
+func parseInt(sliced []split.Node) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
+	if i, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return types.Integer(i), 1
+	}
+	return nil, 0
 }
 
 // handle "a:b:c" as (list a b c)
@@ -226,11 +243,11 @@ func parseList(word string) (types.Object, bool) {
 
 // handle "$type" as (lit type)
 // mark a type in order to use it as literal
-func parseLiteral(word string) (types.Object, bool) {
-	if word[0] != '$' {
-		return nil, false
+func parseLiteral(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s[0] == '$' {
+		return types.NewList(names.LitId, handleSubWord(s[1:])), 1
 	}
-	return types.NewList(names.LitId, handleSubWord(word[1:])), true
+	return nil, 0
 }
 
 // handle "map[t1]t2" as (map t1 t2)
@@ -242,28 +259,32 @@ func parseMapType(word string) (types.Object, bool) {
 	return types.NewList(names.MapId, handleSubWord(word[4:index]), handleSubWord(word[index+1:])), true
 }
 
-func parseNone(word string) (types.Object, bool) {
-	return types.None, word == "None"
+func parseNone(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s == "None" {
+		return types.None, 1
+	}
+	return nil, 0
 }
 
 // handle "!b" as (! b)
-func parseNot(word string) (types.Object, bool) {
+func parseNot(sliced []split.Node) (types.Object, int) {
 	// test len to keep the basic identifier case
-	if word[0] != '!' || len(word) == 1 || word == names.NotEqual {
-		return nil, false
+	if _, s, _ := sliced[0].Cast(); s[0] == '!' && len(s) != 1 && s != names.NotEqual {
+		return types.NewList(names.NotId, handleSubWord(s[1:])), 1
 	}
-	return types.NewList(names.NotId, handleSubWord(word[1:])), true
+	return nil, 0
 }
 
-func parseRune(word string) (types.Object, bool) {
-	lastIndex := len(word) - 1
-	if word[0] != '\'' || word[lastIndex] != '\'' {
-		return nil, false
+func parseRune(sliced []split.Node) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
+	lastIndex := len(s) - 1
+	if s[0] != '\'' || s[lastIndex] != '\'' {
+		return nil, 0
 	}
 
 	first := false
 	var extracted rune
-	for _, char := range word[1:lastIndex] {
+	for _, char := range s[1:lastIndex] {
 		if char == '\\' {
 			first = false
 			continue
@@ -291,18 +312,19 @@ func parseRune(word string) (types.Object, bool) {
 		}
 		break
 	}
-	return types.Rune(extracted), true
+	return types.Rune(extracted), 1
 }
 
-func parseString(word string) (types.Object, bool) {
-	lastIndex := len(word) - 1
-	if word[0] != '"' || word[lastIndex] != '"' {
-		return nil, false
+func parseString(sliced []split.Node) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
+	lastIndex := len(s) - 1
+	if s[0] != '"' || s[lastIndex] != '"' {
+		return nil, 0
 	}
 
 	escape := false
 	extracted := make([]rune, 0, lastIndex)
-	for _, char := range word[1:lastIndex] {
+	for _, char := range s[1:lastIndex] {
 		if escape {
 			escape = false
 			if char == '\'' {
@@ -313,7 +335,7 @@ func parseString(word string) (types.Object, bool) {
 		} else {
 			switch char {
 			case '"':
-				return nil, false
+				return nil, 0
 			case '\\':
 				escape = true
 			default:
@@ -321,26 +343,29 @@ func parseString(word string) (types.Object, bool) {
 			}
 		}
 	}
-	return types.String(extracted), true
+	return types.String(extracted), 1
 }
 
 // handle "~type" as (~ type)
-func parseTilde(word string) (types.Object, bool) {
+func parseTilde(sliced []split.Node) (types.Object, int) {
 	// test len to keep the basic identifier case
-	if word[0] != '~' || len(word) == 1 {
-		return nil, false
+	if _, s, _ := sliced[0].Cast(); s[0] == '~' && len(s) != 1 {
+		return types.NewList(names.TildeId, handleSubWord(s[1:])), 1
 	}
-	return types.NewList(names.TildeId, handleSubWord(word[1:])), true
+	return nil, 0
 }
 
-func parseTrue(word string) (types.Object, bool) {
-	return types.Boolean(true), word == "true"
+func parseTrue(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s == "true" {
+		return types.Boolean(true), 1
+	}
+	return nil, 0
 }
 
 // handle ",a" as (quote a)
-func parseUnquote(word string) (types.Object, bool) {
-	if word[0] != ',' {
-		return nil, false
+func parseUnquote(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s[0] == ',' {
+		return types.NewList(names.UnquoteId, handleSubWord(s[1:])), 1
 	}
-	return types.NewList(names.UnquoteId, handleSubWord(word[1:])), true
+	return nil, 0
 }
