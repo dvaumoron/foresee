@@ -35,7 +35,7 @@ func init() {
 	wordParsers = []ConvertString{
 		parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
 		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseNot, parseArrowChanType, parseChanArrowType, parseChanType,
-		parseGenericType, parseArrayOrSliceType, parseMapType, parseFuncType, parseDotField,
+		parseArrayOrSliceType, parseMapType, parseFuncType, parseGenericType, parseDotField,
 	}
 }
 
@@ -197,13 +197,13 @@ func parseFuncType(word string) (types.Object, bool) {
 	return types.NewList(names.FuncId, handleTypeList(word[5:index]), handleTypeList(word[index+1:])), true
 }
 
-// handle "type<typeList>" as (gen type typeList)
+// handle "type[typeList]" as (gen type typeList)
 // typeList format is "t1,t2" as (list t1 t2) where t1 and t2 can be any node (including "name:type" format)
 func parseGenericType(word string) (types.Object, bool) {
-	index := strings.IndexByte(word, '<')
+	index := strings.IndexByte(word, '[')
 	lastIndex := len(word) - 1
 	// (no need to test ':' (this rule is applied after parseList))
-	if index == -1 || word[lastIndex] != '>' {
+	if index == -1 || word[lastIndex] != ']' {
 		return nil, false
 	}
 	return types.NewList(names.GenId, handleSubWord(word[:index]), handleTypeList(word[index+1:lastIndex])), true

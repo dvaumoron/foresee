@@ -25,10 +25,10 @@ import (
 )
 
 var (
-	errParsingClosing      = errors.New("parsing failure : wait closing separator")
-	errParsingParent       = errors.New("parsing failure : unexpected parenthesis")
-	errParsingString       = errors.New("parsing failure : unended string")
-	errParsingWrongClosing = errors.New("parsing failure : wait another closing separator")
+	errParsingClosing           = errors.New("parsing failure : wait closing separator")
+	errParsingString            = errors.New("parsing failure : unended string")
+	errParsingUnexpectedClosing = errors.New("parsing failure : unexpected closing separator")
+	errParsingWrongClosing      = errors.New("parsing failure : wait another closing separator")
 )
 
 func appendBuffer(splitted []string, buffer []rune) ([]string, []rune) {
@@ -46,11 +46,6 @@ func readSub(buffer []rune, chars <-chan rune, startDelim rune, endDelim rune) (
 		case char == endDelim:
 			buffer = append(buffer, char)
 			return buffer, nil
-		case char == '<':
-			buffer, err = readSub(buffer, chars, '<', '>')
-			if err != nil {
-				return nil, err
-			}
 		case char == '[':
 			buffer, err = readSub(buffer, chars, '[', ']')
 			if err != nil {
@@ -61,11 +56,8 @@ func readSub(buffer []rune, chars <-chan rune, startDelim rune, endDelim rune) (
 			if err != nil {
 				return nil, err
 			}
-		case char == '>', char == ']', char == '}':
+		case char == ']', char == '}':
 			return nil, errParsingWrongClosing
-		case char == '(', char == ')':
-			// return buffer with parenthesis to handle special case like "<", "<=" or "<-"
-			return append(buffer, char), errParsingParent
 		default:
 			buffer = append(buffer, char)
 		}
@@ -103,11 +95,6 @@ func splitListSep(word string, sep rune, kindId types.Identifier) (types.Object,
 			if err != nil {
 				return nil, false
 			}
-		case char == '<':
-			buffer, err = readSub(buffer, chars, '<', '>')
-			if err != nil {
-				return nil, false
-			}
 		case char == '[':
 			buffer, err = readSub(buffer, chars, '[', ']')
 			if err != nil {
@@ -118,7 +105,7 @@ func splitListSep(word string, sep rune, kindId types.Identifier) (types.Object,
 			if err != nil {
 				return nil, false
 			}
-		case char == '>', char == ']', char == '}':
+		case char == ']', char == '}':
 			return nil, false
 		case char == sep:
 			nodeList.Add(handleSubWord(string(buffer)))

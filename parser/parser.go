@@ -19,33 +19,11 @@ import (
 	"unicode"
 
 	"github.com/dvaumoron/foresee/builtins/names"
+	"github.com/dvaumoron/foresee/parser/stack"
 	"github.com/dvaumoron/foresee/types"
 )
 
 var errIndent = errors.New("identation not consistent")
-
-type stack[T any] struct {
-	inner []T
-}
-
-func (s *stack[T]) push(e T) {
-	s.inner = append(s.inner, e)
-}
-
-func (s *stack[T]) peek() T {
-	return s.inner[len(s.inner)-1]
-}
-
-func (s *stack[T]) pop() T {
-	last := len(s.inner) - 1
-	res := s.inner[last]
-	s.inner = s.inner[:last]
-	return res
-}
-
-func newStack[T any]() *stack[T] {
-	return &stack[T]{}
-}
 
 func Parse(str string) (*types.List, error) {
 	tokens, err := splitIndentToSyntax(str)
@@ -53,9 +31,9 @@ func Parse(str string) (*types.List, error) {
 		return nil, err
 	}
 
-	listStack := newStack[*types.List]()
+	listStack := stack.New[*types.List]()
 	res := types.NewList(names.FileId)
-	listStack.push(res)
+	listStack.Push(res)
 	manageOpen(listStack)
 	for _, token := range tokens {
 		handleToken(token, listStack)
@@ -64,21 +42,21 @@ func Parse(str string) (*types.List, error) {
 	return res, err
 }
 
-func handleToken(token string, listStack *stack[*types.List]) {
+func handleToken(token string, listStack *stack.Stack[*types.List]) {
 	switch token {
 	case "(":
 		manageOpen(listStack)
 	case ")":
-		listStack.pop()
+		listStack.Pop()
 	default:
-		listStack.peek().Add(handleWord(token))
+		listStack.Peek().Add(handleWord(token))
 	}
 }
 
-func manageOpen(listStack *stack[*types.List]) {
+func manageOpen(listStack *stack.Stack[*types.List]) {
 	current := types.NewList()
-	listStack.peek().Add(current)
-	listStack.push(current)
+	listStack.Peek().Add(current)
+	listStack.Push(current)
 }
 
 func sendChar(chars chan<- rune, line string) {
@@ -89,8 +67,8 @@ func sendChar(chars chan<- rune, line string) {
 }
 
 func splitIndentToSyntax(str string) ([]string, error) {
-	indentStack := newStack[int]()
-	indentStack.push(0)
+	indentStack := stack.New[int]()
+	indentStack.Push(0)
 
 	var splitted []string
 	for _, line := range strings.Split(str, "\n") {
@@ -99,15 +77,15 @@ func splitIndentToSyntax(str string) ([]string, error) {
 			var char rune
 			for index, char = range line {
 				if !unicode.IsSpace(char) {
-					if top := indentStack.peek(); top < index {
-						indentStack.push(index)
+					if top := indentStack.Peek(); top < index {
+						indentStack.Push(index)
 					} else {
 						splitted = append(splitted, ")")
 						if top > index {
-							indentStack.pop()
-							for top = indentStack.peek(); top > index; top = indentStack.peek() {
+							indentStack.Pop()
+							for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
 								splitted = append(splitted, ")")
-								indentStack.pop()
+								indentStack.Pop()
 							}
 							if top < index {
 								return nil, errIndent
@@ -159,30 +137,6 @@ func splitTokens(line string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-		case char == '<':
-			subBuffer, err := readSub(nil, chars, '<', '>')
-			if err != nil {
-				if err == errParsingParent { // to handle "<", "<=" and "<-"
-					subBuffer[0] = '|' // replace '<' (avoid infinite recursion)
-					subTokens, err := splitTokens(string(subBuffer))
-					if err != nil {
-						return nil, err
-					}
-
-					buffer = append(buffer, '<')               // add back '<'
-					for _, subChar := range subTokens[0][1:] { // skip the placeholder
-						buffer = append(buffer, subChar)
-					}
-
-					splitted, buffer = appendBuffer(splitted, buffer)
-					splitted = append(splitted, subTokens[1:]...)
-
-					continue
-				}
-
-				return nil, err
-			}
-			buffer = append(buffer, subBuffer...)
 		case char == ']', char == '}':
 			return nil, errParsingWrongClosing
 		case char == '#':
