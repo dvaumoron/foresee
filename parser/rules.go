@@ -103,12 +103,22 @@ func handleTypeList(node split.Node) types.Object {
 	return types.NewList(names.ListId)
 }
 
-func handleChanType(word string, prefix string, typeId types.Identifier) (types.Object, bool) {
-	lastIndex := len(word) - 1
-	if !strings.HasPrefix(word, prefix) || word[lastIndex] != ']' {
-		return nil, false
+func handleChanType(sliced []split.Node, typeId types.Identifier) (types.Object, int) {
+	_, s, _ := sliced[0].Cast()
+	if s != string(typeId) || len(sliced) < 2 {
+		return nil, 0
 	}
-	return types.NewList(typeId, handleSubWord(word[len(prefix):lastIndex])), true
+
+	k, _, l := sliced[1].Cast()
+	if k != split.SquareBracketsKind {
+		return nil, 0
+	}
+
+	res := types.NewList(typeId)
+	if processNodes(l, res) == nil {
+		return res, 1
+	}
+	return nil, 0
 }
 
 // handle "&value" as (& value)
@@ -124,7 +134,7 @@ func parseAddressing(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "[n]type" or "[]type" as (slice n type) or (slice type)
-func parseArrayOrSliceType(word string) (types.Object, bool) {
+func parseArrayOrSliceType(sliced []split.Node) (types.Object, int) {
 	index := strings.IndexByte(word, ']')
 	// test len to keep the basic identifier case
 	if word[0] != '[' || index == -1 || len(word) == 2 || word == names.Store {
@@ -140,18 +150,18 @@ func parseArrayOrSliceType(word string) (types.Object, bool) {
 }
 
 // handle "<-chan[type]" as (<-chan type)
-func parseArrowChanType(word string) (types.Object, bool) {
-	return handleChanType(word, "<-chan[", names.ArrowChanId)
+func parseArrowChanType(sliced []split.Node) (types.Object, int) {
+	return handleChanType(sliced, names.ArrowChanId)
 }
 
 // handle "chan<-[type]" as (chan<- type)
-func parseChanArrowType(word string) (types.Object, bool) {
-	return handleChanType(word, "chan<-[", names.ChanArrowId)
+func parseChanArrowType(sliced []split.Node) (types.Object, int) {
+	return handleChanType(sliced, names.ChanArrowId)
 }
 
 // handle "chan[type]" as (chan type)
-func parseChanType(word string) (types.Object, bool) {
-	return handleChanType(word, "chan[", names.ChanId)
+func parseChanType(sliced []split.Node) (types.Object, int) {
+	return handleChanType(word, names.ChanId)
 }
 
 // handle "*a" as (* a)
@@ -165,7 +175,7 @@ func parseDereference(sliced []split.Node) (types.Object, int) {
 
 // handle "a.b.c" as (get a b c)
 // (manage melting with string literal or nested part)
-func parseDotField(word string) (types.Object, bool) {
+func parseDotField(sliced []split.Node) (types.Object, int) {
 	if word == names.Dot {
 		return nil, false
 	}
@@ -210,7 +220,7 @@ func parseFuncType(sliced []split.Node) (types.Object, int) {
 
 // handle "type[typeList]" as (gen type typeList)
 // typeList format is "t1,t2" as (list t1 t2) where t1 and t2 can be any node (including "name:type" format)
-func parseGenericType(word string) (types.Object, bool) {
+func parseGenericType(sliced []split.Node) (types.Object, int) {
 	index := strings.IndexByte(word, '[')
 	lastIndex := len(word) - 1
 	// (no need to test ':' (this rule is applied after parseList))
@@ -248,7 +258,7 @@ func parseLiteral(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "map[t1]t2" as (map t1 t2)
-func parseMapType(word string) (types.Object, bool) {
+func parseMapType(sliced []split.Node) (types.Object, int) {
 	index := strings.IndexByte(word, ']')
 	if !strings.HasPrefix(word, "map[") || index == -1 {
 		return nil, false

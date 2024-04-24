@@ -24,8 +24,6 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-const slicingSize = 3
-
 var (
 	errIndent = errors.New("identation not consistent")
 	errNode   = errors.New("unhandled node")
@@ -52,7 +50,7 @@ func Parse(str string) (*types.List, error) {
 func processNodes(nodes []split.Node, list *types.List) error {
 	last := len(nodes)
 	for i := 0; i < last; {
-		object, consumed := handleSlice(nodes[i:min(i+slicingSize, last)])
+		object, consumed := handleSlice(nodes[i:last])
 		if consumed == 0 {
 			return errNode
 		}
