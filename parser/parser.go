@@ -24,7 +24,12 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-var errIndent = errors.New("identation not consistent")
+const slicingSize = 3
+
+var (
+	errIndent = errors.New("identation not consistent")
+	errNode   = errors.New("unhandled node")
+)
 
 type splitResult struct {
 	nodes []split.Node
@@ -37,20 +42,25 @@ func Parse(str string) (*types.List, error) {
 		return nil, splitRes.err
 	}
 
-	last := len(splitRes.nodes)
 	res := types.NewList(names.FileId)
-	for i := 0; i < last; {
-		object, consumed := handleSlice(splitRes.nodes[i:min(i+2, last)])
-		res.Add(object)
-		i += consumed
+	if err := processNodes(splitRes.nodes, res); err != nil {
+		return nil, err
 	}
-
 	return res, nil
 }
 
-func handleSlice(nodes []split.Node) (types.Object, int) {
-	// TODO
-	return types.None, 1
+func processNodes(nodes []split.Node, list *types.List) error {
+	last := len(nodes)
+	for i := 0; i < last; {
+		object, consumed := handleSlice(nodes[i:min(i+slicingSize, last)])
+		if consumed == 0 {
+			return errNode
+		}
+
+		list.Add(object)
+		i += consumed
+	}
+	return nil
 }
 
 func splitIndentToSyntax(str string) splitResult {

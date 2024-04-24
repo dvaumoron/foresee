@@ -43,7 +43,7 @@ func init() {
 // Must be called before the parsing of files to affect them
 func AddCustomRule(rule types.Appliable) {
 	// TODO use a mutex ? (will macro or parsing run concurrently ???)
-	sliceParsers = append(sliceParsers, func([]split.Node) (types.Object, int) {
+	sliceParsers = append(sliceParsers, func(sliced []split.Node) (types.Object, int) {
 		args := types.NewList(types.String("todo"))
 		node := rule.Apply(BuiltinsCopy, args)
 		// The Apply must return None if it fails.
@@ -56,38 +56,51 @@ func AddCustomRule(rule types.Appliable) {
 
 // try to apply parsing rule in order (including custom rules),
 // fallback to an identifier when nothing matches
-func handleWord(sliced []split.Node) (types.Object, int) {
+func handleSlice(sliced []split.Node) (types.Object, int) {
 	for _, parser := range sliceParsers {
 		if node, consumed := parser(sliced); consumed != 0 {
 			return node, consumed
 		}
 	}
 
-	if _, s, _ := sliced[0].Cast(); s != "" {
-		return types.Identifier(s), 1
+	switch k, s, l := sliced[0].Cast(); k {
+	case split.StringKind:
+		if s != "" {
+			return types.Identifier(s), 1
+		}
+	case split.ParenthesisKind:
+		res := types.NewList()
+		if processNodes(l, res) == nil {
+			return res, 1
+		}
 	}
-	return nil, 0
+	return types.None, 0
 }
 
 // empty string are handled as None, otherwise call handleWord
-func handleSubWord(word string) types.Object {
-	if word = strings.TrimSpace(word); word == "" {
+func handleSubWord(node split.Node) types.Object {
+	if _, s, _ := node.Cast(); s == "" {
 		return types.None
 	}
-	return handleWord(word)
+	o, _ := handleSlice([]split.Node{node})
+	return o
 }
 
 // always return a list with the ListId header
 // (manage melting with string literal or nested part)
-func handleTypeList(word string) types.Object {
-	if word == "" {
-		return types.NewList(names.ListId)
+func handleTypeList(node split.Node) types.Object {
+	switch k, s, l := node.Cast(); k {
+	case split.StringKind:
+		if s != "" {
+			return types.NewList(names.ListId, handleSubWord(node))
+		}
+	case split.ParenthesisKind, split.SquareBracketsKind, split.CurlyBracesKind:
+		res := types.NewList()
+		if processNodes(l, res) == nil {
+			return res
+		}
 	}
-
-	if res, ok := splitListSep(word, ',', names.ListId); ok {
-		return res
-	}
-	return types.NewList(names.ListId, handleWord(word))
+	return types.NewList(names.ListId)
 }
 
 func handleChanType(word string, prefix string, typeId types.Identifier) (types.Object, bool) {
@@ -185,30 +198,14 @@ func parseFloat(sliced []split.Node) (types.Object, int) {
 
 // handle "func[typeList]typeList2" as (func typeList typeList2),
 // typeList format is "t1,t2" as (list t1 t2)
-func parseFuncType(word string) (types.Object, bool) {
-	if !strings.HasPrefix(word, string("func[")) || strings.IndexByte(word, ']') == -1 {
-		return nil, false
+func parseFuncType(sliced []split.Node) (types.Object, int) {
+	if _, s, _ := sliced[0].Cast(); s != string(names.FuncId) || len(sliced) < 3 {
+		return nil, 0
 	}
-
-	// search of the corresponding closing square bracket (without string handling)
-	index, count := 5, 1
-	for wordLen := len(word); index < wordLen; index++ {
-		switch word[index] {
-		case '[':
-			count++
-		case ']':
-			count--
-			if count == 0 {
-				break
-			}
-		}
+	if k, _, _ := sliced[1].Cast(); k != split.SquareBracketsKind {
+		return nil, 0
 	}
-
-	if count != 0 {
-		// incorrect syntax
-		return nil, false
-	}
-	return types.NewList(names.FuncId, handleTypeList(word[5:index]), handleTypeList(word[index+1:])), true
+	return types.NewList(names.FuncId, handleTypeList(sliced[1]), handleTypeList(sliced[2])), 3
 }
 
 // handle "type[typeList]" as (gen type typeList)
@@ -233,12 +230,12 @@ func parseInt(sliced []split.Node) (types.Object, int) {
 
 // handle "a:b:c" as (list a b c)
 // (manage melting with string literal or nested part)
-func parseList(word string) (types.Object, bool) {
+func parseList(sliced []split.Node) (types.Object, int) {
 	// exception for ":="
-	if word == names.DeclareAssign {
-		return nil, false
+	if _, s, _ := sliced[0].Cast(); s != names.DeclareAssign {
+		return splitListSep(s, ':', names.ListId)
 	}
-	return splitListSep(word, ':', names.ListId)
+	return nil, 0
 }
 
 // handle "$type" as (lit type)
