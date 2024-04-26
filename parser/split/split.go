@@ -60,10 +60,9 @@ func (s StringNode) Cast() (Kind, string, []Node) {
 	return StringKind, string(s), nil
 }
 
-func appendBuffer(splitted []Node, buffer []rune, appender func([]Node) []Node) ([]Node, []rune) {
+func appendBuffer(splitted []Node, buffer []rune) ([]Node, []rune) {
 	if len(buffer) != 0 {
 		splitted = append(splitted, StringNode(buffer))
-		splitted = appender(splitted)
 		buffer = buffer[:0]
 	}
 	return splitted, buffer
@@ -95,83 +94,99 @@ func consumeString(chars <-chan rune, delim rune) StringNode {
 func SmartSplit(chars <-chan rune) ([]Node, error) {
 	var buffer []rune
 	var splitted []Node
+	appender := appendSeparator
 	for char := range chars {
 		switch {
 		case unicode.IsSpace(char):
-			splitted, buffer = appendBuffer(splitted, buffer, appendSeparator)
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = appender(splitted)
+			appender = appendNothing
 		case char == '"', char == '\'':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, consumeString(chars, char))
+			appender = appendSeparator
 		case char == '(':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, ')', ParenthesisKind)
 			if err != nil {
 				return nil, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == '[':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, ']', SquareBracketsKind)
 			if err != nil {
 				return nil, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == '{':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, '}', CurlyBracesKind)
 			if err != nil {
 				return nil, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == ')', char == ']', char == '}':
 			return nil, errParsingUnexpectedClosing
 		default:
 			buffer = append(buffer, char)
+			appender = appendSeparator
 		}
 	}
 
-	splitted, _ = appendBuffer(splitted, buffer, appendNothing)
+	splitted, _ = appendBuffer(splitted, buffer)
 	return splitted, nil
 }
 
 func splitSub(chars <-chan rune, delim rune, kind Kind) (listNode, error) {
 	var buffer []rune
 	var splitted []Node
+	appender := appendSeparator
 	for char := range chars {
 		switch {
 		case char == delim:
-			splitted, _ = appendBuffer(splitted, buffer, appendNothing)
+			splitted, _ = appendBuffer(splitted, buffer)
 			return listNode{nodes: splitted, kind: kind}, nil
 		case unicode.IsSpace(char):
-			splitted, buffer = appendBuffer(splitted, buffer, appendSeparator)
+			splitted, buffer = appendBuffer(splitted, buffer)
+			splitted = appender(splitted)
+			appender = appendNothing
 		case char == '"', char == '\'':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			splitted = append(splitted, consumeString(chars, char))
+			appender = appendSeparator
 		case char == '(':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, ')', ParenthesisKind)
 			if err != nil {
 				return listNode{}, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == '[':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, ']', SquareBracketsKind)
 			if err != nil {
 				return listNode{}, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == '{':
-			splitted, buffer = appendBuffer(splitted, buffer, appendNothing)
+			splitted, buffer = appendBuffer(splitted, buffer)
 			sub, err := splitSub(chars, '}', CurlyBracesKind)
 			if err != nil {
 				return listNode{}, err
 			}
 			splitted = append(splitted, sub)
+			appender = appendSeparator
 		case char == ')', char == ']', char == '}':
 			return listNode{}, errParsingWrongClosing
 		default:
 			buffer = append(buffer, char)
+			appender = appendSeparator
 		}
 	}
 	return listNode{}, errParsingClosing
