@@ -106,7 +106,6 @@ func handleSubWord(node split.Node) types.Object {
 }
 
 // always return a list with the ListId header
-// (manage melting with string literal or nested part)
 func handleTypeList(node split.Node) types.Object {
 	switch k, s, l := node.Cast(); k {
 	case split.StringKind:
@@ -256,7 +255,8 @@ func parseFloat(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "func[typeList]typeList2" as (func typeList typeList2),
-// typeList format is "t1,t2" as (list t1 t2)
+// typeList format is "t1 t2" as (list t1 t2)
+// typeList2 format could be "t1" or "(t1 t2)" as (list t1) or (list t1 t2)
 func parseFuncType(sliced []split.Node) (types.Object, int) {
 	if _, s, _ := sliced[0].Cast(); s != string(names.FuncId) || len(sliced) < 3 {
 		return nil, 0
@@ -268,7 +268,7 @@ func parseFuncType(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "type[typeList]" as (gen type typeList)
-// typeList format is "t1,t2" as (list t1 t2) where t1 and t2 can be any node (including "name:type" format)
+// typeList format is "t1 t2" as (list t1 t2) where t1 and t2 can be any node (including "name:type" format)
 func parseGenericType(sliced []split.Node) (types.Object, int) {
 	if len(sliced) < 2 {
 		return nil, 0
@@ -354,67 +354,17 @@ func parseRune(sliced []split.Node) (types.Object, int) {
 		return nil, 0
 	}
 
-	first := false
-	var extracted rune
-	for _, char := range s[1:lastIndex] {
-		if char == '\\' {
-			first = false
-			continue
-		}
-		extracted = char
-		if first {
-			break
-		}
-
-		switch char {
-		case 'a':
-			extracted = '\a'
-		case 'b':
-			extracted = '\b'
-		case 'f':
-			extracted = '\f'
-		case 'n':
-			extracted = '\n'
-		case 'r':
-			extracted = '\r'
-		case 't':
-			extracted = '\t'
-		case 'v':
-			extracted = '\v'
-		}
-		break
-	}
+	extracted, _, _, _ := strconv.UnquoteChar(s[1:], '\'')
 	return types.Rune(extracted), 1
 }
 
 func parseString(sliced []split.Node) (types.Object, int) {
 	_, s, _ := sliced[0].Cast()
-	lastIndex := len(s) - 1
-	if s[0] != '"' || s[lastIndex] != '"' {
+	if s[0] != '"' || s[len(s)-1] != '"' {
 		return nil, 0
 	}
 
-	escape := false
-	extracted := make([]rune, 0, lastIndex)
-	for _, char := range s[1:lastIndex] {
-		if escape {
-			escape = false
-			if char == '\'' {
-				extracted = append(extracted, '\'')
-			} else {
-				extracted = append(extracted, '\\', char)
-			}
-		} else {
-			switch char {
-			case '"':
-				return nil, 0
-			case '\\':
-				escape = true
-			default:
-				extracted = append(extracted, char)
-			}
-		}
-	}
+	extracted, _ := strconv.Unquote(s)
 	return types.String(extracted), 1
 }
 
