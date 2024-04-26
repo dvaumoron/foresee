@@ -407,27 +407,25 @@ func skipSeparator(sliced []split.Node) (types.Object, int) {
 }
 
 func splitListSep(sliced []split.Node, sep string, typeId types.Identifier) (types.Object, int) {
-	var index int
-	var node split.Node
-	for index, node = range sliced {
+	for index, node := range sliced {
 		if k, _, _ := node.Cast(); k == split.SeparatorKind {
+			sliced = sliced[:index]
 			break
 		}
 	}
-	sliced = sliced[:index]
 
 	notFound := true
 	var nodes []split.Node
 	res := types.NewList(typeId)
-	for _, node = range sliced {
+	for _, node := range sliced {
 		if k, s, _ := node.Cast(); k == split.StringKind {
 			splitted := strings.Split(s, sep)
 			last := len(splitted) - 1
 			if last < 1 {
-				notFound = false
 				continue
 			}
 
+			notFound = false
 			object, _ := handleSlice(append(nodes, split.StringNode(splitted[0])))
 			res.Add(object)
 			for i := 1; i < last; {
@@ -445,5 +443,5 @@ func splitListSep(sliced []split.Node, sep string, typeId types.Identifier) (typ
 
 	object, _ := handleSlice(nodes)
 	res.Add(object)
-	return res, index
+	return res, len(sliced)
 }
