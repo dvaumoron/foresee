@@ -272,8 +272,7 @@ func parseGenericType(sliced []split.Node) (types.Object, int) {
 		return nil, 0
 	}
 
-	k, _, _ := sliced[1].Cast()
-	if k != split.SquareBracketsKind {
+	if k, _, _ := sliced[1].Cast(); k != split.SquareBracketsKind {
 		return nil, 0
 	}
 	return types.NewList(names.GenId, handleSubWord(sliced[0]), handleTypeList(sliced[1])), 2
