@@ -34,9 +34,9 @@ type SliceParser = func([]split.Node) (types.Object, int)
 // needed to prevent a cycle in the initialisation
 func init() {
 	sliceParsers = []SliceParser{
-		skipSeparator, parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseLiteral, parseList,
-		parseEllipsis, parseTilde, parseAddressing, parseDereference, parseNot, parseArrowChanType, parseChanArrowType, parseChanType,
-		parseArrayOrSliceType, parseMapType, parseFuncType, parseGenericType, parseDotField,
+		skipSeparator, parseTrue, parseFalse, parseNone, parseString, parseRune, parseInt, parseFloat, parseUnquote, parseList, parseEllipsis, parseDotField,
+		parseLiteral, parseTilde, parseAddressing, parseDereference, parseNot, parseArrowChanType, parseChanArrowType, parseChanType, parseArrayOrSliceType,
+		parseMapType, parseFuncType, parseGenericType,
 	}
 }
 
@@ -219,12 +219,11 @@ func parseDereference(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "a.b.c" as (get a b c)
-// (manage melting with string literal or nested part)
 func parseDotField(sliced []split.Node) (types.Object, int) {
-	if word == names.Dot {
+	if _, s, _ := sliced[0].Cast(); s == names.Dot {
 		return nil, 0
 	}
-	return splitListSep(word, '.', names.GetId)
+	return splitListSep(sliced, ".", names.GetId)
 }
 
 // handle "...type" as (... type)
@@ -290,11 +289,10 @@ func parseInt(sliced []split.Node) (types.Object, int) {
 }
 
 // handle "a:b:c" as (list a b c)
-// (manage melting with string literal or nested part)
 func parseList(sliced []split.Node) (types.Object, int) {
 	// exception for ":="
 	if _, s, _ := sliced[0].Cast(); s != names.DeclareAssign {
-		return splitListSep(s, ':', names.ListId)
+		return splitListSep(sliced, ":", names.ListId)
 	}
 	return nil, 0
 }
@@ -403,4 +401,47 @@ func skipSeparator(sliced []split.Node) (types.Object, int) {
 		return nil, -1
 	}
 	return nil, 0
+}
+
+func splitListSep(sliced []split.Node, sep string, typeId types.Identifier) (types.Object, int) {
+	var index int
+	var node split.Node
+	for index, node = range sliced {
+		if k, _, _ := node.Cast(); k == split.SeparatorKind {
+			break
+		}
+	}
+	sliced = sliced[:index]
+
+	notFound := true
+	var nodes []split.Node
+	res := types.NewList(typeId)
+	for _, node = range sliced {
+		if k, s, _ := node.Cast(); k == split.StringKind {
+			splitted := strings.Split(s, sep)
+			last := len(splitted) - 1
+			if last < 1 {
+				notFound = false
+				continue
+			}
+
+			object, _ := handleSlice(append(nodes, split.StringNode(splitted[0])))
+			res.Add(object)
+			for i := 1; i < last; {
+				res.Add(handleSubWord(split.StringNode(splitted[i])))
+			}
+			nodes = nodes[:1]
+			nodes[0] = split.StringNode(splitted[last])
+		} else {
+			nodes = append(nodes, node)
+		}
+	}
+
+	if notFound {
+		return nil, 0
+	}
+
+	object, _ := handleSlice(nodes)
+	res.Add(object)
+	return res, index
 }
