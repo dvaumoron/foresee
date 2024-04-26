@@ -153,9 +153,9 @@ func lenWithoutLastSeparator(l []split.Node) int {
 
 // handle "&value" as (& value)
 func parseAddressing(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
+	k, s, _ := sliced[0].Cast()
 	// test len to keep the basic identifier case
-	if s[0] != '&' || len(s) == 1 ||
+	if k != split.StringKind || s[0] != '&' || len(s) == 1 ||
 		s == names.And || s == names.AndAssign ||
 		s == names.AndNot || s == names.AndNotAssign {
 		return nil, 0
@@ -172,8 +172,7 @@ func parseArrayOrSliceType(sliced []split.Node) (types.Object, int) {
 		return nil, 0
 	}
 
-	k, s, _ := sliced[1].Cast()
-	if k != split.StringKind || s == "=" {
+	if _, s, _ := sliced[1].Cast(); s == "=" {
 		return nil, 0
 	}
 
@@ -208,9 +207,9 @@ func parseChanType(sliced []split.Node) (types.Object, int) {
 
 // handle "*a" as (* a)
 func parseDereference(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
+	k, s, _ := sliced[0].Cast()
 	// test len to keep the basic identifier case
-	if s[0] != '*' || len(s) == 1 || s == names.MultAssign {
+	if k != split.StringKind || s[0] != '*' || len(s) == 1 || s == names.MultAssign {
 		return nil, 0
 	}
 
@@ -300,8 +299,8 @@ func parseList(sliced []split.Node) (types.Object, int) {
 // handle "$type" as (lit type)
 // mark a type in order to use it as literal
 func parseLiteral(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
-	if s[0] != '$' {
+	k, s, _ := sliced[0].Cast()
+	if k != split.StringKind || s[0] != '$' {
 		return nil, 0
 	}
 
@@ -339,16 +338,16 @@ func parseNone(sliced []split.Node) (types.Object, int) {
 // handle "!b" as (! b)
 func parseNot(sliced []split.Node) (types.Object, int) {
 	// test len to keep the basic identifier case
-	if _, s, _ := sliced[0].Cast(); s[0] == '!' && len(s) != 1 && s != names.NotEqual {
+	if k, s, _ := sliced[0].Cast(); k == split.StringKind && s[0] == '!' && len(s) != 1 && s != names.NotEqual {
 		return types.NewList(names.NotId, handleSubWord(split.StringNode(s[1:]))), 1
 	}
 	return nil, 0
 }
 
 func parseRune(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
+	k, s, _ := sliced[0].Cast()
 	lastIndex := len(s) - 1
-	if s[0] != '\'' || s[lastIndex] != '\'' {
+	if k != split.StringKind || s[0] != '\'' || s[lastIndex] != '\'' {
 		return nil, 0
 	}
 
@@ -357,8 +356,8 @@ func parseRune(sliced []split.Node) (types.Object, int) {
 }
 
 func parseString(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
-	if s[0] != '"' || s[len(s)-1] != '"' {
+	k, s, _ := sliced[0].Cast()
+	if k != split.StringKind || s[0] != '"' || s[len(s)-1] != '"' {
 		return nil, 0
 	}
 
@@ -368,9 +367,9 @@ func parseString(sliced []split.Node) (types.Object, int) {
 
 // handle "~type" as (~ type)
 func parseTilde(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
+	k, s, _ := sliced[0].Cast()
 	// test len to keep the basic identifier case
-	if s[0] != '~' || len(s) == 1 {
+	if k != split.StringKind || s[0] != '~' || len(s) == 1 {
 		return nil, 0
 	}
 
@@ -387,8 +386,8 @@ func parseTrue(sliced []split.Node) (types.Object, int) {
 
 // handle ",a" as (quote a)
 func parseUnquote(sliced []split.Node) (types.Object, int) {
-	_, s, _ := sliced[0].Cast()
-	if s[0] != ',' {
+	k, s, _ := sliced[0].Cast()
+	if k != split.StringKind || s[0] != ',' {
 		return nil, 0
 	}
 
@@ -430,8 +429,8 @@ func splitListSep(sliced []split.Node, sep string, typeId types.Identifier) (typ
 			for i := 1; i < last; {
 				res.Add(handleSubWord(split.StringNode(splitted[i])))
 			}
-			nodes = nodes[:1]
-			nodes[0] = split.StringNode(splitted[last])
+			nodes = nodes[:0]
+			nodes = append(nodes, split.StringNode(splitted[last]))
 		} else {
 			nodes = append(nodes, node)
 		}

@@ -17,6 +17,17 @@ type Stack[T any] struct {
 	inner []T
 }
 
+func (s *Stack[T]) Pop() T {
+	last := len(s.inner) - 1
+	res := s.inner[last]
+	s.inner = s.inner[:last]
+	return res
+}
+
+func (s *Stack[T]) Size() int {
+	return len(s.inner)
+}
+
 func (s *Stack[T]) Push(e T) {
 	s.inner = append(s.inner, e)
 }
@@ -25,12 +36,6 @@ func (s *Stack[T]) Peek() T {
 	return s.inner[len(s.inner)-1]
 }
 
-func (s *Stack[T]) Pop() T {
-	last := len(s.inner) - 1
-	res := s.inner[last]
-	s.inner = s.inner[:last]
-	return res
-}
 
 func New[T any]() *Stack[T] {
 	return &Stack[T]{}

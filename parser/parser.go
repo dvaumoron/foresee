@@ -70,9 +70,13 @@ func splitIndentToSyntax(str string) splitResult {
 	resChan := make(chan splitResult)
 	go func() {
 		nodes, err := split.SmartSplit(chars)
+		for range chars { // emptying non consumed
+		}
+
 		resChan <- splitResult{nodes: nodes, err: err}
 	}()
 
+	chars <- '('
 	for _, line := range strings.Split(str, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
 			index := 0
@@ -107,6 +111,9 @@ func splitIndentToSyntax(str string) splitResult {
 				chars <- char
 			}
 		}
+	}
+	for range indentStack.Size() {
+		chars <- ')'
 	}
 	close(chars)
 
