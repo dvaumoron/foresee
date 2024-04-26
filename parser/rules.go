@@ -81,7 +81,7 @@ func handleSlice(sliced []split.Node) (types.Object, int) {
 	case split.SquareBracketsKind:
 		if len(l) == 0 {
 			if size > 1 {
-				if _, s, _ := sliced[0].Cast(); s == "=" {
+				if _, s, _ := sliced[1].Cast(); s == "=" {
 					return names.StoreId, 2
 				}
 			}
@@ -290,10 +290,10 @@ func parseInt(sliced []split.Node) (types.Object, int) {
 // handle "a:b:c" as (list a b c)
 func parseList(sliced []split.Node) (types.Object, int) {
 	// exception for ":="
-	if _, s, _ := sliced[0].Cast(); s != names.DeclareAssign {
-		return splitListSep(sliced, ":", names.ListId)
+	if _, s, _ := sliced[0].Cast(); s == names.DeclareAssign {
+		return nil, 0
 	}
-	return nil, 0
+	return splitListSep(sliced, ":", names.ListId)
 }
 
 // handle "$type" as (lit type)
@@ -337,11 +337,15 @@ func parseNone(sliced []split.Node) (types.Object, int) {
 
 // handle "!b" as (! b)
 func parseNot(sliced []split.Node) (types.Object, int) {
+	k, s, _ := sliced[0].Cast()
 	// test len to keep the basic identifier case
-	if k, s, _ := sliced[0].Cast(); k == split.StringKind && s[0] == '!' && len(s) != 1 && s != names.NotEqual {
-		return types.NewList(names.NotId, handleSubWord(split.StringNode(s[1:]))), 1
+	if k != split.StringKind || s[0] != '!' || len(s) == 1 || s == names.NotEqual {
+		return nil, 0
+
 	}
-	return nil, 0
+
+	object, consumed := handleSlice(append([]split.Node{split.StringNode(s[1:])}, sliced[1:]...))
+	return types.NewList(names.NotId, object), consumed
 }
 
 func parseRune(sliced []split.Node) (types.Object, int) {
@@ -351,8 +355,8 @@ func parseRune(sliced []split.Node) (types.Object, int) {
 		return nil, 0
 	}
 
-	extracted, _, _, _ := strconv.UnquoteChar(s[1:], '\'')
-	return types.Rune(extracted), 1
+	extracted, _ := strconv.Unquote(s)
+	return types.Rune([]rune(extracted)[0]), 1
 }
 
 func parseString(sliced []split.Node) (types.Object, int) {
@@ -429,8 +433,7 @@ func splitListSep(sliced []split.Node, sep string, typeId types.Identifier) (typ
 			for i := 1; i < last; {
 				res.Add(handleSubWord(split.StringNode(splitted[i])))
 			}
-			nodes = nodes[:0]
-			nodes = append(nodes, split.StringNode(splitted[last]))
+			nodes = append(nodes[:0], split.StringNode(splitted[last]))
 		} else {
 			nodes = append(nodes, node)
 		}

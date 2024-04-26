@@ -24,9 +24,9 @@ var (
 	_ types.Environment = DebugEnvironment{}
 )
 
-// Augment String with an Apply which display list
+// Augment Indentifier with an Apply which display list
 type debugWrapper struct {
-	types.String
+	types.Identifier
 }
 
 func (w debugWrapper) Eval(types.Environment) types.Object {
@@ -36,24 +36,24 @@ func (w debugWrapper) Eval(types.Environment) types.Object {
 func (w debugWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
 	var buffer strings.Builder
 	buffer.WriteByte('(')
-	buffer.WriteString(string(w.String))
+	buffer.WriteString(string(w.Identifier))
 	types.ForEach(args, func(elem types.Object) bool {
 		buffer.WriteByte(' ')
 		elem.Eval(env).Render(&buffer)
 		return true
 	})
 	buffer.WriteByte(')')
-	return debugWrapper{String: types.String(buffer.String())}
+	return debugWrapper{Identifier: types.Identifier(buffer.String())}
 }
 
-// all Identifier eval return a wrapped String
+// all Identifier eval return a wrapped Identifier
 // (the wrapper is a display list appliable)
 type DebugEnvironment struct {
 	types.NoneType
 }
 
 func (DebugEnvironment) LoadStr(key string) (types.Object, bool) {
-	return debugWrapper{String: types.String(key)}, true
+	return debugWrapper{Identifier: types.Identifier(key)}, true
 }
 
 func (d DebugEnvironment) Load(key types.Object) types.Object {
