@@ -48,15 +48,16 @@ func Parse(str string) (*types.List, error) {
 }
 
 func processNodes(nodes []split.Node, list *types.List) error {
-	last := len(nodes)
-	for i := 0; i < last; {
-		object, consumed := handleSlice(nodes[i:last])
-		if consumed == 0 {
+	for i, last := 0, len(nodes); i < last; {
+		switch object, consumed := handleSlice(nodes[i:]); consumed {
+		case -1: // separator marker
+			i += 1
+		case 0:
 			return errNode
+		default:
+			list.Add(object)
+			i += consumed
 		}
-
-		list.Add(object)
-		i += consumed
 	}
 	return nil
 }

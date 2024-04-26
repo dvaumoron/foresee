@@ -251,7 +251,7 @@ func extractAssignTarget(env types.Environment, object types.Object) *jen.Statem
 
 func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.Statement {
 	switch op, _ := list.LoadInt(0).(types.Identifier); op {
-	case names.Load:
+	case names.LoadId:
 		it := list.Iter()
 		defer it.Close()
 

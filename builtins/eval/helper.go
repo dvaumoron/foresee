@@ -116,7 +116,7 @@ func buildAssignFuncFromList(env types.Environment, list *types.List) func(types
 		return func(value types.Object) {
 			env.StoreStr(string(id), value)
 		}
-	case names.Load:
+	case names.LoadId:
 		if size < 3 {
 			panic(errPairSize)
 		}
