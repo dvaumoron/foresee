@@ -5,34 +5,34 @@ import "fmt"
 type adder struct
     # the ? indicate to use generic (should detect linked field type) 
     # and distinguish from a type embedding
-	value ?
+    value ?
 
 func NewAdder(a) ? # the ? indicate there is a return
-	return (&adder value:a) # equivalent to ((& adder) value:a) as (& a b) will output "a & b"
+    return (&adder value:a) # equivalent to ((& adder) value:a) as (& a b) will output "a & b"
 
 func (a *adder) Add(b) ? # *adder is equivalent to (* adder)
-	return (+ a.value b) # use of + allows to guess it's a base.Addable
+    return (+ a.value b) # use of + allows to guess it's a base.Addable
 
 type adderInt struct
     value int
 
 func MakeAdderInt(a) ?
-	return (adderInt value:a)
+    return (adderInt value:a)
 
 func (a adderInt) Add(b) ?
     return (+ a.value b) # different here because value is an int
 
 func Addition(a b) ?
-	return (. a Add b)
+    return (. a Add b)
 
 func UseAdder() # no ? (there is no return)
-	var a:complex128
-	= a 1
-	var b:complex128 2
+    var a:complex128
+    = a 1
+    var b:complex128 2
 
-	fmt.Println "Result 1 is" (Addition (NewAdder a) b)
+    fmt.Println "Result 1 is" (Addition (NewAdder a) b)
 
-	:= (c d) 1 2
+    := (c d) 1 2
 
-	if (< 1 2)
-		fmt.Println "Result 2 is" (Addition (MakeAdderInt c) d)
+    if (< 1 2)
+        fmt.Println "Result 2 is" (Addition (MakeAdderInt c) d)

@@ -16,7 +16,6 @@ package parser
 import (
 	"errors"
 	"strings"
-	"unicode"
 
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/parser/split"
@@ -27,6 +26,7 @@ import (
 var (
 	errIndent = errors.New("identation not consistent")
 	errNode   = errors.New("unhandled node")
+	errTab    = errors.New("tabulation not allowed in indentation")
 )
 
 func Parse(str string) (*types.List, error) {
@@ -72,29 +72,34 @@ func splitIndentToSyntax(str string) ([]split.Node, error) {
 	indentStack.Push(0)
 	for _, line := range strings.Split(str, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
-			index := 0
-			var char rune
+			index, char := 0, rune(0)
 			for index, char = range line {
-				if !unicode.IsSpace(char) {
-					if top := indentStack.Peek(); top < index {
-						indentStack.Push(index)
-					} else {
-						chars = closePreviousLine(chars)
-						if top > index {
-							indentStack.Pop()
-							for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
-								chars = append(chars, ')')
-								indentStack.Pop()
-							}
-							if top < index {
-								return nil, errIndent
-							}
-							chars = append(chars, ')')
-						}
-					}
-					chars = append(chars, '(')
-					break
+				switch char {
+				case ' ':
+					continue
+				case '\t':
+					return nil, errTab
 				}
+
+				if top := indentStack.Peek(); top < index {
+					indentStack.Push(index)
+				} else {
+					chars = closePreviousLine(chars)
+					if top > index {
+						indentStack.Pop()
+						for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
+							chars = append(chars, ')')
+							indentStack.Pop()
+						}
+						if top < index {
+							return nil, errIndent
+						}
+						chars = append(chars, ')')
+					}
+				}
+				chars = append(chars, '(')
+				break
+
 			}
 
 			for _, char := range line[index:] {

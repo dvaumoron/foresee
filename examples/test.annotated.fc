@@ -3,37 +3,37 @@ package goal
 import "github.com/dvaumoron/foresee/base"
 
 type guessed0[T0:any T1:any] interface
-	Add(T0) T1
+    Add(T0) T1
 
 type adder[T:base.Addable] struct
-	value T
+    value T
 
 func NewAdder[T:base.Addable](a:T) *adder[T]
-	return (&adder[T] value:a) # equivalent to ((& (gen adder (list T))) (list value a)) as (& a b) will output "a & b"
+    return (&adder[T] value:a) # equivalent to ((& (gen adder (list T))) (list value a)) as (& a b) will output "a & b"
 
 func (a *adder[T]) Add(b:T) T # *adder[T] is equivalent to (* (gen adder (list T)))
-	return (+ a.value b) # a.value is equivalent to (get a value)
+    return (+ a.value b) # a.value is equivalent to (get a value)
 
 type adderInt struct
     value int
 
 func MakeAdderInt(a:int) adderInt
-	return ($adderInt value:a) # the $ flag adderInt as a type (useful when not inferred) 
+    return ($adderInt value:a) # the $ flag adderInt as a type (useful when not inferred) 
 
 func (a adderInt) Add(b:int) int
     return (+ a.value b) 
 
 func Addition[T0:any T1:any] (a:guessed0[T0 T1] b:T0) T1
-	return (. a Add b)
+    return (. a Add b)
 
 func UseAdder() # no return
-	var a:complex128
-	= a 1
-	var b:complex128 2
+    var a:complex128
+    = a 1
+    var b:complex128 2
 
-	fmt.Println "Result 1 is" (Addition (NewAdder a) b)
+    fmt.Println "Result 1 is" (Addition (NewAdder a) b)
 
-	:= (c d) 1 2
+    := (c d) 1 2
 
-	if (< 1 2)
-		fmt.Println "Result 2 is" (Addition (MakeAdderInt c) d)
+    if (< 1 2)
+        fmt.Println "Result 2 is" (Addition (MakeAdderInt c) d)
