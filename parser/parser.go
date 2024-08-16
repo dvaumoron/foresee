@@ -29,19 +29,14 @@ var (
 	errNode   = errors.New("unhandled node")
 )
 
-type splitResult struct {
-	nodes []split.Node
-	err   error
-}
-
 func Parse(str string) (*types.List, error) {
-	splitRes := splitIndentToSyntax(str)
-	if splitRes.err != nil {
-		return nil, splitRes.err
+	nodes, err := splitIndentToSyntax(str)
+	if err != nil {
+		return nil, err
 	}
 
 	res := types.NewList(names.FileId)
-	if err := processNodes(splitRes.nodes, res); err != nil {
+	if err := processNodes(nodes, res); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -62,24 +57,17 @@ func processNodes(nodes []split.Node, list *types.List) error {
 	return nil
 }
 
-func sendClosingParenthesis(chars chan<- rune) {
-	chars <- ')'
+func appendClosingParenthesis(chars []rune) []rune {
+	return append(chars, ')')
 }
 
-func sendNothing(_ chan<- rune) {
+func appendNothing(chars []rune) []rune {
+	return chars
 }
 
-func splitIndentToSyntax(str string) splitResult {
-	chars, resChan := make(chan rune), make(chan splitResult)
-	go func() {
-		nodes, err := split.SmartSplit(chars)
-		for range chars { // emptying non consumed
-		}
-
-		resChan <- splitResult{nodes: nodes, err: err}
-	}()
-
-	closePreviousLine := sendNothing
+func splitIndentToSyntax(str string) ([]split.Node, error) {
+	chars := []rune{}
+	closePreviousLine := appendNothing
 	indentStack := stack.New[int]()
 	indentStack.Push(0)
 	for _, line := range strings.Split(str, "\n") {
@@ -91,20 +79,20 @@ func splitIndentToSyntax(str string) splitResult {
 					if top := indentStack.Peek(); top < index {
 						indentStack.Push(index)
 					} else {
-						closePreviousLine(chars)
+						chars = closePreviousLine(chars)
 						if top > index {
 							indentStack.Pop()
 							for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
-								chars <- ')'
+								chars = append(chars, ')')
 								indentStack.Pop()
 							}
 							if top < index {
-								return splitResult{err: errIndent}
+								return nil, errIndent
 							}
-							chars <- ')'
+							chars = append(chars, ')')
 						}
 					}
-					chars <- '('
+					chars = append(chars, '(')
 					break
 				}
 			}
@@ -113,15 +101,14 @@ func splitIndentToSyntax(str string) splitResult {
 				if char == '#' {
 					break
 				}
-				chars <- char
+				chars = append(chars, char)
 			}
-			closePreviousLine = sendClosingParenthesis
+			closePreviousLine = appendClosingParenthesis
 		}
 	}
 	for range indentStack.Size() {
-		chars <- ')'
+		chars = append(chars, ')')
 	}
-	close(chars)
 
-	return <-resChan
+	return split.SmartSplit(chars)
 }
