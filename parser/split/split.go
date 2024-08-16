@@ -15,6 +15,7 @@ package split
 
 import (
 	"errors"
+	"iter"
 	"unicode"
 )
 
@@ -27,8 +28,8 @@ const (
 )
 
 var (
-	errParsingClosing           = errors.New("parsing failure : wait closing separator")
-	errParsingString            = errors.New("parsing failure : unended string")
+	// errParsingClosing           = errors.New("parsing failure : wait closing separator")
+	// errParsingString            = errors.New("parsing failure : unended string")
 	errParsingUnexpectedClosing = errors.New("parsing failure : unexpected closing separator")
 	errParsingWrongClosing      = errors.New("parsing failure : wait another closing separator")
 )
@@ -60,157 +61,163 @@ func (s StringNode) Cast() (Kind, string, []Node) {
 	return StringKind, string(s), nil
 }
 
-func appendBuffer(splitted []Node, buffer []rune) ([]Node, []rune) {
-	if len(buffer) != 0 {
-		splitted = append(splitted, StringNode(buffer))
-		buffer = buffer[:0]
+func yieldBuffer(yield func(Node) bool, buffer []rune) ([]rune, bool) {
+	if len(buffer) == 0 {
+		return buffer, true
 	}
-	return splitted, buffer
+
+	ok := yield(StringNode(buffer))
+	return buffer[:0], ok
 }
 
-// append a separatorNode if the previous was not one
-func appendSeparator(splitted []Node) []Node {
-	if last := len(splitted) - 1; last >= 0 {
-		if k, _, _ := splitted[last].Cast(); k != SeparatorKind {
-			return append(splitted, separatorNode{})
-		}
-	}
-	return splitted
+func yieldSeparator(yield func(Node) bool) bool {
+	return yield(separatorNode{})
 }
 
-func consumeString(nextChar func() (rune, bool), delim rune) StringNode {
+func yieldNothing(yield func(Node) bool) bool {
+	return true
+}
+
+func consumeString(yieldChar *func(rune) bool, delim rune, yield func(Node) bool) {
+	previousYieldChar := *yieldChar
+
+	var directAppender func(char rune) bool
+
 	buffer := []rune{delim}
-	for {
-		char, ok := nextChar()
-		if !ok {
-			panic(errParsingString)
-		}
-
+	stoppableAppender := func(char rune) bool {
 		switch char {
 		case delim:
-			return StringNode(append(buffer, delim))
+			*yieldChar = previousYieldChar
+			return yield(StringNode(append(buffer, delim)))
 		case '\\':
-			char2, ok := nextChar()
-			if !ok {
-				panic(errParsingString)
-			}
-
-			buffer = append(buffer, char, char2)
+			buffer = append(buffer, char)
+			*yieldChar = directAppender
 		default:
 			buffer = append(buffer, char)
 		}
+		return true
+	}
+
+	directAppender = func(char rune) bool {
+		buffer = append(buffer, char)
+		*yieldChar = stoppableAppender
+		return true
+	}
+
+	*yieldChar = stoppableAppender
+}
+
+func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] {
+	var buffer []rune
+	yielder, ok := yieldSeparator, true
+	return func(yield func(Node) bool) {
+		var yieldChar func(char rune) bool
+		highYieldChar := func(char rune) bool {
+			switch {
+			case unicode.IsSpace(char):
+				buffer, ok = yieldBuffer(yield, buffer)
+				if !ok {
+					return false
+				}
+
+				if !yielder(yield) {
+					return false
+				}
+				yielder = yieldNothing
+			case char == '"', char == '\'':
+				buffer, ok = yieldBuffer(yield, buffer)
+				if !ok {
+					return false
+				}
+
+				consumeString(&yieldChar, char, yield)
+				yielder = yieldSeparator
+			case char == '(':
+				buffer, ok = yieldBuffer(yield, buffer)
+				if !ok {
+					return false
+				}
+
+				splitSub(&yieldChar, ')', ParenthesisKind, yield, registerError)
+				yielder = yieldSeparator
+			case char == '[':
+				buffer, ok = yieldBuffer(yield, buffer)
+				if !ok {
+					return false
+				}
+
+				splitSub(&yieldChar, ']', SquareBracketsKind, yield, registerError)
+				yielder = yieldSeparator
+			case char == '{':
+				buffer, ok = yieldBuffer(yield, buffer)
+				if !ok {
+					return false
+				}
+
+				splitSub(&yieldChar, '}', CurlyBracesKind, yield, registerError)
+				yielder = yieldSeparator
+			case char == ')', char == ']', char == '}':
+				registerError(errParsingUnexpectedClosing)
+				return false
+			default:
+				buffer = append(buffer, char)
+				yielder = yieldSeparator
+			}
+			return true
+		}
+
+		yieldChar = highYieldChar
+		chars(func(char rune) bool {
+			return yieldChar(char)
+		})
+
+		yieldBuffer(yield, buffer)
 	}
 }
 
-func SmartSplit(chars []rune) ([]Node, error) {
-	nextChar := initNextChar(chars)
+func splitSub(yieldChar *func(rune) bool, delim rune, kind Kind, yield func(Node) bool, registerError func(error)) {
+	previousYieldChar := *yieldChar
 
-	var buffer []rune
 	var splitted []Node
-	for {
-		char, ok := nextChar()
-		if !ok {
-			break
-		}
-
-		switch {
-		case unicode.IsSpace(char):
-			splitted, buffer = appendBuffer(splitted, buffer)
-			splitted = appendSeparator(splitted)
-		case char == '"', char == '\'':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			splitted = append(splitted, consumeString(nextChar, char))
-		case char == '(':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, ')', ParenthesisKind)
-			if err != nil {
-				return nil, err
-			}
-			splitted = append(splitted, sub)
-		case char == '[':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, ']', SquareBracketsKind)
-			if err != nil {
-				return nil, err
-			}
-			splitted = append(splitted, sub)
-		case char == '{':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, '}', CurlyBracesKind)
-			if err != nil {
-				return nil, err
-			}
-			splitted = append(splitted, sub)
-		case char == ')', char == ']', char == '}':
-			return nil, errParsingUnexpectedClosing
-		default:
-			buffer = append(buffer, char)
-		}
+	localYield := func(node Node) bool {
+		splitted = append(splitted, node)
+		return true
 	}
 
-	splitted, _ = appendBuffer(splitted, buffer)
-	return splitted, nil
-}
-
-func splitSub(nextChar func() (rune, bool), delim rune, kind Kind) (listNode, error) {
 	var buffer []rune
-	var splitted []Node
-	for {
-		char, ok := nextChar()
-		if !ok {
-			break
-		}
-
+	yielder := yieldSeparator
+	*yieldChar = func(char rune) bool {
 		switch {
 		case char == delim:
-			splitted, _ = appendBuffer(splitted, buffer)
-			return listNode{nodes: splitted, kind: kind}, nil
+			yieldBuffer(localYield, buffer)
+			*yieldChar = previousYieldChar
+			return yield(listNode{nodes: splitted, kind: kind})
 		case unicode.IsSpace(char):
-			splitted, buffer = appendBuffer(splitted, buffer)
-			splitted = appendSeparator(splitted)
+			buffer, _ = yieldBuffer(localYield, buffer)
+			yielder(localYield)
+			yielder = yieldNothing
 		case char == '"', char == '\'':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			splitted = append(splitted, consumeString(nextChar, char))
+			buffer, _ = yieldBuffer(localYield, buffer)
+			consumeString(yieldChar, char, localYield)
+			yielder = yieldSeparator
 		case char == '(':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, ')', ParenthesisKind)
-			if err != nil {
-				return listNode{}, err
-			}
-			splitted = append(splitted, sub)
+			buffer, _ = yieldBuffer(localYield, buffer)
+			splitSub(yieldChar, ')', ParenthesisKind, localYield, registerError)
+			yielder = yieldSeparator
 		case char == '[':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, ']', SquareBracketsKind)
-			if err != nil {
-				return listNode{}, err
-			}
-			splitted = append(splitted, sub)
+			buffer, _ = yieldBuffer(localYield, buffer)
+			splitSub(yieldChar, ']', SquareBracketsKind, localYield, registerError)
+			yielder = yieldSeparator
 		case char == '{':
-			splitted, buffer = appendBuffer(splitted, buffer)
-			sub, err := splitSub(nextChar, '}', CurlyBracesKind)
-			if err != nil {
-				return listNode{}, err
-			}
-			splitted = append(splitted, sub)
+			buffer, _ = yieldBuffer(localYield, buffer)
+			splitSub(yieldChar, '}', CurlyBracesKind, localYield, registerError)
+			yielder = yieldSeparator
 		case char == ')', char == ']', char == '}':
-			return listNode{}, errParsingWrongClosing
+			registerError(errParsingWrongClosing)
+			return false
 		default:
 			buffer = append(buffer, char)
 		}
-	}
-	return listNode{}, errParsingClosing
-}
-
-func initNextChar(chars []rune) func() (rune, bool) {
-	i := 0
-	charLen := len(chars)
-	return func() (rune, bool) {
-		if i >= charLen {
-			return 0, false
-		}
-
-		char := chars[i]
-		i++
-		return char, true
+		return true
 	}
 }

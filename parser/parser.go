@@ -15,6 +15,8 @@ package parser
 
 import (
 	"errors"
+	"iter"
+	"slices"
 	"strings"
 
 	"github.com/dvaumoron/foresee/builtins/names"
@@ -30,7 +32,10 @@ var (
 )
 
 func Parse(str string) (*types.List, error) {
-	nodes, err := splitIndentToSyntax(str)
+	var err error
+	nodes := slices.Collect(splitIndentToSyntax(str, func(innerErr error) {
+		err = innerErr
+	}))
 	if err != nil {
 		return nil, err
 	}
@@ -57,63 +62,78 @@ func processNodes(nodes []split.Node, list *types.List) error {
 	return nil
 }
 
-func appendClosingParenthesis(chars []rune) []rune {
-	return append(chars, ')')
+func yieldClosingParenthesis(yield func(rune) bool) bool {
+	return yield(')')
 }
 
-func appendNothing(chars []rune) []rune {
-	return chars
+func yieldNothing(yield func(rune) bool) bool {
+	return true
 }
 
-func splitIndentToSyntax(str string) ([]split.Node, error) {
-	chars := []rune{}
-	closePreviousLine := appendNothing
+func indentToSyntax(str string, registerError func(error)) iter.Seq[rune] {
+	closePreviousLine := yieldNothing
 	indentStack := stack.New[int]()
 	indentStack.Push(0)
-	for _, line := range strings.Split(str, "\n") {
-		if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
-			index, char := 0, rune(0)
-			for index, char = range line {
-				switch char {
-				case ' ':
-					continue
-				case '\t':
-					return nil, errTab
-				}
 
-				if top := indentStack.Peek(); top < index {
-					indentStack.Push(index)
-				} else {
-					chars = closePreviousLine(chars)
-					if top > index {
-						indentStack.Pop()
-						for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
-							chars = append(chars, ')')
-							indentStack.Pop()
-						}
-						if top < index {
-							return nil, errIndent
-						}
-						chars = append(chars, ')')
+	return func(yield func(rune) bool) {
+		for _, line := range strings.Split(str, "\n") {
+			if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
+				index, char := 0, rune(0)
+				for index, char = range line {
+					switch char {
+					case ' ':
+						continue
+					case '\t':
+						registerError(errTab)
+						return
 					}
-				}
-				chars = append(chars, '(')
-				break
 
-			}
+					if top := indentStack.Peek(); top < index {
+						indentStack.Push(index)
+					} else {
+						if !closePreviousLine(yield) {
+							return
+						}
+						if top > index {
+							indentStack.Pop()
+							for top = indentStack.Peek(); top > index; top = indentStack.Peek() {
+								if !yield(')') {
+									return
+								}
+								indentStack.Pop()
+							}
+							if top < index {
+								registerError(errIndent)
+								return
+							}
 
-			for _, char := range line[index:] {
-				if char == '#' {
+						}
+					}
+					if !yield('(') {
+						return
+					}
 					break
 				}
-				chars = append(chars, char)
+
+				for _, char := range line[index:] {
+					if char == '#' {
+						break
+					}
+					if !yield(char) {
+						return
+					}
+				}
+				closePreviousLine = yieldClosingParenthesis
 			}
-			closePreviousLine = appendClosingParenthesis
+		}
+		for range indentStack.Size() {
+			if !yield(')') {
+				return
+			}
 		}
 	}
-	for range indentStack.Size() {
-		chars = append(chars, ')')
-	}
+}
 
-	return split.SmartSplit(chars)
+func splitIndentToSyntax(str string, registerError func(error)) iter.Seq[split.Node] {
+	return split.SmartSplit(indentToSyntax(str, registerError), registerError)
 }
