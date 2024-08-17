@@ -106,7 +106,9 @@ func indentToSyntax(str string, registerError func(error)) iter.Seq[rune] {
 								registerError(errIndent)
 								return
 							}
-
+							if !yield(')') {
+								return
+							}
 						}
 					}
 					if !yield('(') {
