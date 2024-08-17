@@ -167,9 +167,11 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 		}
 
 		yieldChar = highYieldChar
-		chars(func(char rune) bool {
-			return yieldChar(char)
-		})
+		for char := range chars {
+			if !yieldChar(char) {
+				return
+			}
+		}
 
 		yieldBuffer(yield, buffer)
 	}
