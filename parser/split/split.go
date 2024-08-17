@@ -177,8 +177,8 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 	}
 }
 
-func splitSub(yieldChar *func(rune) bool, delim rune, kind Kind, yield func(Node) bool, registerError func(error)) {
-	previousYieldChar := *yieldChar
+func splitSub(yieldCharPtr *func(rune) bool, delim rune, kind Kind, yield func(Node) bool, registerError func(error)) {
+	previousYieldChar := *yieldCharPtr
 
 	var splitted []Node
 	localYield := func(node Node) bool {
@@ -188,11 +188,11 @@ func splitSub(yieldChar *func(rune) bool, delim rune, kind Kind, yield func(Node
 
 	var buffer []rune
 	yielder := yieldSeparator
-	*yieldChar = func(char rune) bool {
+	*yieldCharPtr = func(char rune) bool {
 		switch {
 		case char == delim:
 			yieldBuffer(localYield, buffer)
-			*yieldChar = previousYieldChar
+			*yieldCharPtr = previousYieldChar
 			return yield(listNode{nodes: splitted, kind: kind})
 		case unicode.IsSpace(char):
 			buffer, _ = yieldBuffer(localYield, buffer)
@@ -200,19 +200,19 @@ func splitSub(yieldChar *func(rune) bool, delim rune, kind Kind, yield func(Node
 			yielder = yieldNothing
 		case char == '"', char == '\'':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			consumeString(yieldChar, char, localYield)
+			consumeString(yieldCharPtr, char, localYield)
 			yielder = yieldSeparator
 		case char == '(':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldChar, ')', ParenthesisKind, localYield, registerError)
+			splitSub(yieldCharPtr, ')', ParenthesisKind, localYield, registerError)
 			yielder = yieldSeparator
 		case char == '[':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldChar, ']', SquareBracketsKind, localYield, registerError)
+			splitSub(yieldCharPtr, ']', SquareBracketsKind, localYield, registerError)
 			yielder = yieldSeparator
 		case char == '{':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldChar, '}', CurlyBracesKind, localYield, registerError)
+			splitSub(yieldCharPtr, '}', CurlyBracesKind, localYield, registerError)
 			yielder = yieldSeparator
 		case char == ')', char == ']', char == '}':
 			registerError(errParsingWrongClosing)
