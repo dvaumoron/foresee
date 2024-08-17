@@ -112,7 +112,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 	yielder, ok := yieldSeparator, true
 	return func(yield func(Node) bool) {
 		var yieldChar func(char rune) bool
-		highYieldChar := func(char rune) bool {
+		topYieldChar := func(char rune) bool {
 			switch {
 			case unicode.IsSpace(char):
 				buffer, ok = yieldBuffer(yield, buffer)
@@ -166,7 +166,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 			return true
 		}
 
-		yieldChar = highYieldChar
+		yieldChar = topYieldChar
 		for char := range chars {
 			if !yieldChar(char) {
 				return
