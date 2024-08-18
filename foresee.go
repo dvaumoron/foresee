@@ -85,16 +85,20 @@ func loadGoMod() bool {
 	return ok
 }
 
-func processFile(filePath string) {
-	data, err := os.ReadFile(filePath)
+func parseFile(filePath string) (*types.List, error) {
+	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Println("Error while reading", filePath, ":", err)
-		return
+		return nil, err
 	}
+	defer file.Close()
 
-	parsed, err := parser.Parse(string(data))
+	return parser.Parse(file)
+}
+
+func processFile(filePath string) {
+	parsed, err := parseFile(filePath)
 	if err != nil {
-		fmt.Println("Error while parsing", filePath, ":", err)
+		fmt.Println("Error while opening and parsing", filePath, ":", err)
 		return
 	}
 

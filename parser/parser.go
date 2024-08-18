@@ -14,7 +14,9 @@
 package parser
 
 import (
+	"bufio"
 	"errors"
+	"io"
 	"iter"
 	"slices"
 	"strings"
@@ -31,9 +33,9 @@ var (
 	errTab    = errors.New("tabulation not allowed in indentation")
 )
 
-func Parse(str string) (*types.List, error) {
+func Parse(reader io.Reader) (*types.List, error) {
 	var err error
-	nodes := slices.Collect(splitIndentToSyntax(str, func(innerErr error) {
+	nodes := slices.Collect(splitIndentToSyntax(reader, func(innerErr error) {
 		err = innerErr
 	}))
 	if err != nil {
@@ -70,13 +72,15 @@ func yieldNothing(yield func(rune) bool) bool {
 	return true
 }
 
-func indentToSyntax(str string, registerError func(error)) iter.Seq[rune] {
+func indentToSyntax(reader io.Reader, registerError func(error)) iter.Seq[rune] {
 	closePreviousLine := yieldNothing
 	indentStack := stack.New[int]()
 	indentStack.Push(0)
 
+	scanner := bufio.NewScanner(reader)
 	return func(yield func(rune) bool) {
-		for _, line := range strings.Split(str, "\n") {
+		for scanner.Scan() {
+			line := scanner.Text()
 			if trimmed := strings.TrimSpace(line); trimmed != "" && trimmed[0] != '#' {
 				index, char := 0, rune(0)
 				for index, char = range line {
@@ -128,6 +132,12 @@ func indentToSyntax(str string, registerError func(error)) iter.Seq[rune] {
 				closePreviousLine = yieldClosingParenthesis
 			}
 		}
+
+		if err := scanner.Err(); err != nil {
+			registerError(err)
+			return
+		}
+
 		for range indentStack.Size() {
 			if !yield(')') {
 				return
@@ -136,6 +146,6 @@ func indentToSyntax(str string, registerError func(error)) iter.Seq[rune] {
 	}
 }
 
-func splitIndentToSyntax(str string, registerError func(error)) iter.Seq[split.Node] {
-	return split.SmartSplit(indentToSyntax(str, registerError), registerError)
+func splitIndentToSyntax(reader io.Reader, registerError func(error)) iter.Seq[split.Node] {
+	return split.SmartSplit(indentToSyntax(reader, registerError), registerError)
 }
