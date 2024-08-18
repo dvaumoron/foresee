@@ -28,8 +28,7 @@ const (
 )
 
 var (
-	// errParsingClosing           = errors.New("parsing failure : wait closing separator")
-	// errParsingString            = errors.New("parsing failure : unended string")
+	errParsingClosing           = errors.New("parsing failure : non final state with empty iterator")
 	errParsingUnexpectedClosing = errors.New("parsing failure : unexpected closing separator")
 	errParsingWrongClosing      = errors.New("parsing failure : wait another closing separator")
 )
@@ -78,7 +77,8 @@ func yieldNothing(yield func(Node) bool) bool {
 	return true
 }
 
-func consumeString(yieldChar *func(rune) bool, delim rune, yield func(Node) bool) {
+func consumeString(yieldChar *func(rune) bool, delim rune, yield func(Node) bool, depthPtr *int) {
+	*depthPtr++
 	previousYieldChar := *yieldChar
 
 	var directAppender func(char rune) bool
@@ -87,6 +87,7 @@ func consumeString(yieldChar *func(rune) bool, delim rune, yield func(Node) bool
 	stoppableAppender := func(char rune) bool {
 		switch char {
 		case delim:
+			*depthPtr--
 			*yieldChar = previousYieldChar
 			return yield(StringNode(append(buffer, delim)))
 		case '\\':
@@ -111,6 +112,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 	var buffer []rune
 	yielder, ok := yieldSeparator, true
 	return func(yield func(Node) bool) {
+		depth := 0
 		var yieldChar func(char rune) bool
 		topYieldChar := func(char rune) bool {
 			switch {
@@ -130,7 +132,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 					return false
 				}
 
-				consumeString(&yieldChar, char, yield)
+				consumeString(&yieldChar, char, yield, &depth)
 				yielder = yieldSeparator
 			case char == '(':
 				buffer, ok = yieldBuffer(yield, buffer)
@@ -138,7 +140,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 					return false
 				}
 
-				splitSub(&yieldChar, ')', ParenthesisKind, yield, registerError)
+				splitSub(&yieldChar, ')', ParenthesisKind, yield, registerError, &depth)
 				yielder = yieldSeparator
 			case char == '[':
 				buffer, ok = yieldBuffer(yield, buffer)
@@ -146,7 +148,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 					return false
 				}
 
-				splitSub(&yieldChar, ']', SquareBracketsKind, yield, registerError)
+				splitSub(&yieldChar, ']', SquareBracketsKind, yield, registerError, &depth)
 				yielder = yieldSeparator
 			case char == '{':
 				buffer, ok = yieldBuffer(yield, buffer)
@@ -154,7 +156,7 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 					return false
 				}
 
-				splitSub(&yieldChar, '}', CurlyBracesKind, yield, registerError)
+				splitSub(&yieldChar, '}', CurlyBracesKind, yield, registerError, &depth)
 				yielder = yieldSeparator
 			case char == ')', char == ']', char == '}':
 				registerError(errParsingUnexpectedClosing)
@@ -173,11 +175,17 @@ func SmartSplit(chars iter.Seq[rune], registerError func(error)) iter.Seq[Node] 
 			}
 		}
 
+		if depth != 0 {
+			registerError(errParsingClosing)
+			return
+		}
+
 		yieldBuffer(yield, buffer)
 	}
 }
 
-func splitSub(yieldCharPtr *func(rune) bool, delim rune, kind Kind, yield func(Node) bool, registerError func(error)) {
+func splitSub(yieldCharPtr *func(rune) bool, delim rune, kind Kind, yield func(Node) bool, registerError func(error), depthPtr *int) {
+	*depthPtr++
 	previousYieldChar := *yieldCharPtr
 
 	var splitted []Node
@@ -192,6 +200,7 @@ func splitSub(yieldCharPtr *func(rune) bool, delim rune, kind Kind, yield func(N
 		switch {
 		case char == delim:
 			yieldBuffer(localYield, buffer)
+			*depthPtr--
 			*yieldCharPtr = previousYieldChar
 			return yield(listNode{nodes: splitted, kind: kind})
 		case unicode.IsSpace(char):
@@ -200,19 +209,19 @@ func splitSub(yieldCharPtr *func(rune) bool, delim rune, kind Kind, yield func(N
 			yielder = yieldNothing
 		case char == '"', char == '\'':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			consumeString(yieldCharPtr, char, localYield)
+			consumeString(yieldCharPtr, char, localYield, depthPtr)
 			yielder = yieldSeparator
 		case char == '(':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldCharPtr, ')', ParenthesisKind, localYield, registerError)
+			splitSub(yieldCharPtr, ')', ParenthesisKind, localYield, registerError, depthPtr)
 			yielder = yieldSeparator
 		case char == '[':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldCharPtr, ']', SquareBracketsKind, localYield, registerError)
+			splitSub(yieldCharPtr, ']', SquareBracketsKind, localYield, registerError, depthPtr)
 			yielder = yieldSeparator
 		case char == '{':
 			buffer, _ = yieldBuffer(localYield, buffer)
-			splitSub(yieldCharPtr, '}', CurlyBracesKind, localYield, registerError)
+			splitSub(yieldCharPtr, '}', CurlyBracesKind, localYield, registerError, depthPtr)
 			yielder = yieldSeparator
 		case char == ')', char == ']', char == '}':
 			registerError(errParsingWrongClosing)
