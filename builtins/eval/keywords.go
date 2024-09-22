@@ -14,88 +14,88 @@
 package eval
 
 import (
+	"iter"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
-func appendForm(env types.Environment, itArgs types.Iterator) types.Object {
+func appendForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native append behavior
 
 	return types.None
 }
 
-func assertForm(env types.Environment, itArgs types.Iterator) types.Object {
+func assertForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO add a matching test ?
 
 	return evalFirstForm(env, itArgs)
 }
 
-func blockForm(env types.Environment, itArgs types.Iterator) types.Object {
+func blockForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO manage break and continue ?
-	types.ForEach(itArgs, func(o types.Object) bool {
+	for o := range itArgs {
 		o.Eval((env))
-
-		return true
-	})
+	}
 
 	return types.None
 }
 
-func breakForm(_ types.Environment, itArgs types.Iterator) types.Object {
+func breakForm(_ types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processLabellable(itArgs, breakKind)
 }
 
-func capForm(env types.Environment, itArgs types.Iterator) types.Object {
+func capForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native cap behavior
 
 	return types.None
 }
 
-func caseForm(env types.Environment, itArgs types.Iterator) types.Object {
+func caseForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func closeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func closeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native close behavior
 
 	return types.None
 }
 
-func constForm(env types.Environment, itArgs types.Iterator) types.Object {
+func constForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func continueForm(_ types.Environment, itArgs types.Iterator) types.Object {
+func continueForm(_ types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processLabellable(itArgs, continueKind)
 }
 
-func defaultForm(env types.Environment, itArgs types.Iterator) types.Object {
+func defaultForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func deferForm(env types.Environment, itArgs types.Iterator) types.Object {
+func deferForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO use an appliable stack in env ?
 
 	return types.None
 }
 
-func deleteForm(env types.Environment, itArgs types.Iterator) types.Object {
+func deleteForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native delete behavior
 
 	return types.None
 }
 
-func fallthroughForm(env types.Environment, itArgs types.Iterator) types.Object {
+func fallthroughForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return loopMarker{kind: fallthroughKind}
 }
 
-func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
+func fileForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// init default value
 	env.StoreStr(hiddenTypesName, types.MakeBaseEnvironment())
 
@@ -104,21 +104,24 @@ func fileForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func forForm(env types.Environment, itArgs types.Iterator) types.Object {
+func forForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func funcForm(env types.Environment, itArgs types.Iterator) types.Object {
+func funcForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func getForm(env types.Environment, itArgs types.Iterator) types.Object {
-	res, _ := itArgs.Next()
-	types.ForEach(itArgs, func(elem types.Object) bool {
+func getForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	res, _ := next()
+	for elem := range types.Push(next) {
 		loadable, ok := res.(types.StringLoadable)
 		if !ok {
 			panic(errSelectableType)
@@ -133,75 +136,75 @@ func getForm(env types.Environment, itArgs types.Iterator) types.Object {
 		if !ok {
 			panic(errUnknownField)
 		}
-
-		return true
-	})
+	}
 
 	return res
 }
 
-func goForm(env types.Environment, itArgs types.Iterator) types.Object {
+func goForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func gotoForm(env types.Environment, itArgs types.Iterator) types.Object {
+func gotoForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	panic(errUnimplemented)
 }
 
-func ifForm(env types.Environment, itArgs types.Iterator) types.Object {
+func ifForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func importForm(env types.Environment, itArgs types.Iterator) types.Object {
+func importForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func labelForm(env types.Environment, itArgs types.Iterator) types.Object {
+func labelForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO use a label stack in env ?
 
 	return types.None
 }
 
-func lambdaForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lambdaForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func lenForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lenForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native len behavior
 
 	return types.None
 }
 
-func listFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return types.NewList().AddAll(makeEvalIterator(itArgs, env))
+func listFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	return types.NewList().AddAll(evalIterator(itArgs, env))
 }
 
-func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
-	arg0, ok := itArgs.Next()
-	if !ok {
+func literalForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	typeName, notFind := "", true
+	for arg := range itArgs {
+		typeName, notFind = extractTypeName(arg), false
+		break
+	}
+	if notFind {
 		panic(errUnarySize)
 	}
 
-	typeName := extractTypeName(arg0)
-
-	return types.MakeNativeAppliable(func(env types.Environment, itArgs types.Iterator) types.Object {
+	return types.MakeNativeAppliable(func(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 		args := types.NewList().AddAll(itArgs)
 		if args.Size() != 1 {
-			return initStruct(env, args, typeName)
+			return initStruct(env, args.Iter(), typeName)
 		}
 
 		arg1 := args.LoadInt(0)
 		if casted, ok := arg1.(*types.List); ok {
 			if id, _ := casted.LoadInt(0).(types.Identifier); id == names.ListId {
-				return initStruct(env, args, typeName)
+				return initStruct(env, args.Iter(), typeName)
 			}
 		}
 
@@ -211,70 +214,69 @@ func literalForm(env types.Environment, itArgs types.Iterator) types.Object {
 		}
 
 		// type conversion
-		return copyStruct(env, casted, typeName)
+		return copyStruct(env, casted.Iter(), typeName)
 	})
-
 }
 
-func macroForm(env types.Environment, itArgs types.Iterator) types.Object {
+func macroForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func makeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func makeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native make behavior
 
 	return types.None
 }
 
-func mapTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func mapTypeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return initOrConvertMapAppliable
 }
 
-func newForm(env types.Environment, itArgs types.Iterator) types.Object {
+func newForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO wrap native new behavior
 
 	return types.None
 }
 
-func rangeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func rangeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func returnForm(env types.Environment, itArgs types.Iterator) types.Object {
+func returnForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func selectForm(env types.Environment, itArgs types.Iterator) types.Object {
+func selectForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func sliceOrArrayTypeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func sliceOrArrayTypeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func switchForm(env types.Environment, itArgs types.Iterator) types.Object {
+func switchForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func typeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func typeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func varForm(env types.Environment, itArgs types.Iterator) types.Object {
+func varForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None

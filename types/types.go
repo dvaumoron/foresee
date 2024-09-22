@@ -15,11 +15,11 @@ package types
 
 import (
 	"io"
+	"iter"
 	"strconv"
-	"sync"
 )
 
-type NativeFunc = func(Environment, Iterator) Object
+type NativeFunc = func(Environment, iter.Seq[Object]) Object
 
 type NoneType struct{}
 
@@ -138,42 +138,9 @@ type NativeAppliable struct {
 }
 
 func (n NativeAppliable) Apply(env Environment, it Iterable) Object {
-	it2 := it.Iter()
-	defer it2.Close()
-	return n.inner(env, it2)
+	return n.inner(env, it.Iter())
 }
 
 func MakeNativeAppliable(f NativeFunc) NativeAppliable {
 	return NativeAppliable{inner: f}
-}
-
-type pullIteratorWrapper struct {
-	NoneType
-	next  func() (Object, bool)
-	close func()
-	mutex sync.Mutex
-}
-
-func (it *pullIteratorWrapper) Iter() Iterator {
-	return it
-}
-
-func (it *pullIteratorWrapper) Next() (Object, bool) {
-	if it.next == nil {
-		return None, false
-	}
-
-	it.mutex.Lock()
-	defer it.mutex.Unlock()
-
-	return it.next()
-}
-
-func (it *pullIteratorWrapper) Close() {
-	if it.close != nil {
-		it.mutex.Lock()
-		defer it.mutex.Unlock()
-
-		it.close()
-	}
 }

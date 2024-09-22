@@ -14,60 +14,62 @@
 package compile
 
 import (
+	"iter"
+
 	"github.com/dave/jennifer/jen"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
-func addAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func addAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.AddAssign, names.Plus)
 }
 
-func additionForm(env types.Environment, itArgs types.Iterator) types.Object {
+func additionForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryOrBinaryMoreOperator(env, itArgs, names.Plus)
 }
 
-func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
+func addressOrBitwiseAndForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryOrBinaryMoreOperator(env, itArgs, string(names.AmpersandId))
 }
 
-func andForm(env types.Environment, itArgs types.Iterator) types.Object {
+func andForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.And)
 }
 
-func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func assignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAssign(env, itArgs, names.Assign)
 }
 
-func bitwiseAndAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.AndAssign, string(names.AmpersandId))
 }
 
-func bitwiseAndNotAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndNotAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.AndNotAssign, names.AndNot)
 }
 
-func bitwiseAndNotForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndNotForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.AndNot)
 }
 
-func bitwiseOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseOrAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.OrAssign, names.Pipe)
 }
 
-func bitwiseOrForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseOrForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Pipe)
 }
 
-func bitwiseXOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseXOrAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.XorAssign, names.Caret)
 }
 
-func bitwiseXOrForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseXOrForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Caret)
 }
 
-func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
+func callMethodForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, _ := itArgs.Next()
 	methodId, ok := arg1.(types.Identifier)
@@ -80,31 +82,31 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return callableWrapper{Renderer: compileToCode(env, arg0).Dot(string(methodId)).Call(argsCode...)}
 }
 
-func declareAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func declareAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAssign(env, itArgs, names.DeclareAssign)
 }
 
-func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+func decrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryPostOperator(env, itArgs, names.Decrement)
 }
 
-func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
+func dereferenceOrMultiplyForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryOrBinaryMoreOperator(env, itArgs, string(names.StarId))
 }
 
-func divideAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func divideAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.DivAssign, names.Slash)
 }
 
-func divideForm(env types.Environment, itArgs types.Iterator) types.Object {
+func divideForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Slash)
 }
 
-func equalForm(env types.Environment, itArgs types.Iterator) types.Object {
+func equalForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryOperator(env, itArgs, names.Equal)
 }
 
-func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+func extendSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -112,19 +114,19 @@ func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object 
 	return wrapper{Renderer: compileToCode(env, arg0).Op(string(names.EllipsisId))}
 }
 
-func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
+func greaterForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processComparison(env, itArgs, names.Greater)
 }
 
-func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+func greaterEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processComparison(env, itArgs, names.GreaterEqual)
 }
 
-func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+func incrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryPostOperator(env, itArgs, names.Increment)
 }
 
-func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+func indexOrSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -142,35 +144,35 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 	return callableWrapper{Renderer: slicingCode}
 }
 
-func leftShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
+func leftShiftForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryOperator(env, itArgs, names.LShift)
 }
 
-func leftShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func leftShiftAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssign(env, itArgs, names.LShiftAssign)
 }
 
-func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lesserForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processComparison(env, itArgs, names.Lesser)
 }
 
-func lesserEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lesserEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processComparison(env, itArgs, names.LesserEqual)
 }
 
-func moduloAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func moduloAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.ModAssign, names.Percent)
 }
 
-func moduloForm(env types.Environment, itArgs types.Iterator) types.Object {
+func moduloForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Percent)
 }
 
-func multiplyAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func multiplyAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.MultAssign, string(names.StarId))
 }
 
-func notForm(env types.Environment, itArgs types.Iterator) types.Object {
+func notForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -178,15 +180,15 @@ func notForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: jen.Op(string(names.NotId)).Add(compileToCode(env, arg0))}
 }
 
-func notEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+func notEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryOperator(env, itArgs, names.NotEqual)
 }
 
-func orForm(env types.Environment, itArgs types.Iterator) types.Object {
+func orForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryMoreOperator(env, itArgs, names.Or)
 }
 
-func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.Object {
+func receivingOrSendingForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -205,15 +207,15 @@ func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.
 	return callableWrapper{Renderer: jen.Op(names.Arrow).Add(targetCode)}
 }
 
-func rightShiftForm(env types.Environment, itArgs types.Iterator) types.Object {
+func rightShiftForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processBinaryOperator(env, itArgs, names.RShift)
 }
 
-func rightShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func rightShiftAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssign(env, itArgs, names.RShiftAssign)
 }
 
-func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func storeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -235,10 +237,10 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return wrapper{Renderer: slicingCode.Op(names.Equal).Add(slices[lastIndex][0])}
 }
 
-func substractAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func substractAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processAugmentedAssignMore(env, itArgs, names.SubAssign, names.Minus)
 }
 
-func substractionForm(env types.Environment, itArgs types.Iterator) types.Object {
+func substractionForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryOrBinaryMoreOperator(env, itArgs, names.Minus)
 }

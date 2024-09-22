@@ -14,6 +14,8 @@
 package compile
 
 import (
+	"iter"
+
 	"github.com/dave/jennifer/jen"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
@@ -33,7 +35,7 @@ func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code 
 	return []jen.Code{compileToCode(env, object)}
 }
 
-func processAssign(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processAssign(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, _ := itArgs.Next()
 	values := compileToCodeSlice(env, itArgs)
 	switch casted := arg0.(type) {
@@ -54,7 +56,7 @@ func processAssign(env types.Environment, itArgs types.Iterator, op string) type
 	return wrappedErrorComment
 }
 
-func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssign string) types.Object {
+func processAugmentedAssign(env types.Environment, itArgs iter.Seq[types.Object], opAssign string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	targetCode := extractAssignTarget(env, arg0)
@@ -64,7 +66,7 @@ func processAugmentedAssign(env types.Environment, itArgs types.Iterator, opAssi
 	return wrapper{Renderer: targetCode.Op(opAssign).Add(compileToCode(env, arg1))}
 }
 
-func processAugmentedAssignMore(env types.Environment, itArgs types.Iterator, opAssign string, op string) types.Object {
+func processAugmentedAssignMore(env types.Environment, itArgs iter.Seq[types.Object], opAssign string, op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	targetCode := extractAssignTarget(env, arg0)
@@ -80,7 +82,7 @@ func processAugmentedAssignMore(env types.Environment, itArgs types.Iterator, op
 	return wrapper{Renderer: targetCode}
 }
 
-func processBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processBinaryMoreOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -94,7 +96,7 @@ func processBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op 
 	return wrapper{Renderer: binaryCode}
 }
 
-func processBinaryOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processBinaryOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -103,7 +105,7 @@ func processBinaryOperator(env types.Environment, itArgs types.Iterator, op stri
 	return wrapper{Renderer: compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))}
 }
 
-func processComparison(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processComparison(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -117,10 +119,9 @@ func processComparison(env types.Environment, itArgs types.Iterator, op string) 
 		argCode = currentCode
 	}
 	return wrapper{Renderer: binaryCode}
-
 }
 
-func processUnaryPostOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processUnaryPostOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment
@@ -128,7 +129,7 @@ func processUnaryPostOperator(env types.Environment, itArgs types.Iterator, op s
 	return wrapper{Renderer: compileToCode(env, arg0).Op(op)}
 }
 
-func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs types.Iterator, op string) types.Object {
+func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
 	arg0, ok := itArgs.Next()
 	if !ok {
 		return wrappedErrorComment

@@ -13,7 +13,11 @@
 
 package eval
 
-import "github.com/dvaumoron/foresee/types"
+import (
+	"iter"
+
+	"github.com/dvaumoron/foresee/types"
+)
 
 const (
 	breakKind       loopMarkerKind = iota
@@ -29,8 +33,14 @@ type loopMarker struct {
 	label string
 }
 
-func processLabellable(itArgs types.Iterator, kind loopMarkerKind) types.Object {
-	arg0, ok1 := itArgs.Next()
+func processLabellable(itArgs iter.Seq[types.Object], kind loopMarkerKind) types.Object {
+	ok1 := false
+	var arg0 types.Object = types.None
+	for arg := range itArgs {
+		arg0, ok1 = arg, true
+		break
+	}
+
 	labelId, ok2 := arg0.(types.Identifier)
 	if ok1 && !ok2 {
 		panic(errIdentifierType)

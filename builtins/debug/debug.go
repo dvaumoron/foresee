@@ -14,6 +14,7 @@
 package debug
 
 import (
+	"iter"
 	"strings"
 
 	"github.com/dvaumoron/foresee/types"
@@ -33,15 +34,14 @@ func (w debugWrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
-func (w debugWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
+func (w debugWrapper) Apply(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	var buffer strings.Builder
 	buffer.WriteByte('(')
 	buffer.WriteString(string(w.Identifier))
-	types.ForEach(args, func(elem types.Object) bool {
+	for elem := range itArgs {
 		buffer.WriteByte(' ')
 		elem.Eval(env).Render(&buffer)
-		return true
-	})
+	}
 	buffer.WriteByte(')')
 	return debugWrapper{Identifier: types.Identifier(buffer.String())}
 }

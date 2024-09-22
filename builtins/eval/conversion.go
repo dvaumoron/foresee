@@ -14,6 +14,7 @@
 package eval
 
 import (
+	"iter"
 	"strings"
 
 	"github.com/dvaumoron/foresee/types"
@@ -62,12 +63,16 @@ func extractRenderString(o types.Object) string {
 	return builder.String()
 }
 
-func floatConvFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	arg, _ := itArgs.Next()
-	return types.Float(extractFloat(arg.Eval(env)))
+func floatConvFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	for arg := range itArgs {
+		return types.Float(extractFloat(arg.Eval(env)))
+	}
+	return types.Float(0)
 }
 
-func intConvFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	arg, _ := itArgs.Next()
-	return types.Integer(extractInteger(arg.Eval(env)))
+func intConvFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	for arg := range itArgs {
+		return types.Integer(extractInteger(arg.Eval(env)))
+	}
+	return types.Integer(0)
 }

@@ -45,7 +45,7 @@ func AddCustomRule(rule types.Appliable) {
 	// TODO use a mutex ? (will macro or parsing run concurrently ???)
 	sliceParsers = append(sliceParsers, func(sliced []split.Node) (types.Object, int) {
 		args := types.NewList(types.String("todo"))
-		node := rule.Apply(BuiltinsCopy, args)
+		node := rule.Apply(BuiltinsCopy, args.Iter())
 		// The Apply must return None if it fails.
 		if _, isNone := node.(types.NoneType); isNone {
 			return types.None, 0

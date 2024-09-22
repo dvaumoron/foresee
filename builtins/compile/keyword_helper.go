@@ -14,6 +14,7 @@
 package compile
 
 import (
+	"iter"
 	"strings"
 
 	"github.com/dave/jennifer/jen"
@@ -37,12 +38,12 @@ func extractNameWithGenericDef(env types.Environment, object types.Object) *jen.
 				return nil
 			}
 
-			itGenDef := genDefList.Iter()
-			defer itGenDef.Close()
+			next, stop := types.Pull(genDefList.Iter())
+			defer stop()
 
-			itGenDef.Next() // skip ListId
+			next() // skip ListId
 
-			if genericCodes, noError := innerExtractParameter(env, itGenDef); noError {
+			if genericCodes, noError := innerExtractParameter(env, types.Push(next)); noError {
 				return jen.Id(string(nameId)).Types(genericCodes...)
 			}
 		}
@@ -61,22 +62,23 @@ func extractParameter(env types.Environment, object types.Object) ([]jen.Code, b
 	if !ok {
 		return nil, false
 	}
-	return innerExtractParameter(env, paramIterable)
+	return innerExtractParameter(env, paramIterable.Iter())
 }
 
-func innerExtractParameter(env types.Environment, paramIterable types.Iterable) ([]jen.Code, bool) {
-	noError := true
+func innerExtractParameter(env types.Environment, paramIt iter.Seq[types.Object]) ([]jen.Code, bool) {
+	ok := true
 	var paramCodes []jen.Code
-	types.ForEach(paramIterable, func(elem types.Object) bool {
+	for elem := range paramIt {
 		var paramDesc *types.List
 		// assume it's in "name:type" format (type should be inferred if not declared)
-		if paramDesc, noError = elem.(*types.List); noError {
-			varId, _ := paramDesc.LoadInt(1).(types.Identifier)
-			paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(env, paramDesc.LoadInt(2))))
+		if paramDesc, ok = elem.(*types.List); !ok {
+			break
 		}
-		return noError
-	})
-	return paramCodes, noError
+
+		varId, _ := paramDesc.LoadInt(1).(types.Identifier)
+		paramCodes = append(paramCodes, jen.Id(string(varId)).Add(extractType(env, paramDesc.LoadInt(2))))
+	}
+	return paramCodes, ok
 }
 
 func extractReturnType(env types.Environment, object types.Object) (*jen.Statement, []jen.Code) {
@@ -106,7 +108,7 @@ func extractSingleOrMultiple(env types.Environment, list *types.List) []jen.Code
 	case types.Identifier:
 		return []jen.Code{compileToCode(env, list)}
 	case *types.List:
-		return compileToCodeSlice(env, list)
+		return compileToCodeSlice(env, list.Iter())
 	}
 	return nil
 }
@@ -127,14 +129,17 @@ func extractValueOrMultiple(env types.Environment, object types.Object) []jen.Co
 }
 
 // baseCode is not cloned (must generate a new one on each call)
-func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Statement) types.Object {
+func processDef(env types.Environment, itArgs iter.Seq[types.Object], baseCode *jen.Statement) types.Object {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
 	// K is supposed to be "const" or "var" (passed as baseCode)
-	arg0, _ := itArgs.Next()
+	arg0, _ := next()
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		// detect "K name value"
 		// no declared type, need a value
-		if arg1, ok := itArgs.Next(); ok {
+		if arg1, ok := next(); ok {
 			return wrapper{Renderer: baseCode.Id(string(casted)).Op(names.Assign).Add(compileToCode(env, arg1))}
 		}
 	case *types.List:
@@ -145,7 +150,7 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 			if typeCode := extractType(env, casted.LoadInt(2)); typeCode != nil {
 				baseCode.Add(typeCode)
 			}
-			if arg1, ok := itArgs.Next(); ok {
+			if arg1, ok := next(); ok {
 				baseCode.Op(names.Assign).Add(compileToCode(env, arg1))
 			}
 			return wrapper{Renderer: baseCode}
@@ -154,19 +159,18 @@ func processDef(env types.Environment, itArgs types.Iterator, baseCode *jen.Stat
 		defCodes := []jen.Code{processDefLine(env, casted)}
 
 		// following lines (optional)
-		defCodes = processDefLines(env, itArgs, defCodes)
+		defCodes = processDefLines(env, types.Push(next), defCodes)
 		return wrapper{Renderer: baseCode.Defs(defCodes...)}
 	}
 	return wrappedErrorComment
 }
 
 // handle multiple "(name value)" or "(name:type)" or "(name:type value)"
-func processDefLines(env types.Environment, itArgs types.Iterable, defCodes []jen.Code) []jen.Code {
-	types.ForEach(itArgs, func(elem types.Object) bool {
+func processDefLines(env types.Environment, itArgs iter.Seq[types.Object], defCodes []jen.Code) []jen.Code {
+	for elem := range itArgs {
 		defDesc, _ := elem.(*types.List)
 		defCodes = append(defCodes, processDefLine(env, defDesc))
-		return true
-	})
+	}
 	return defCodes
 }
 
@@ -187,8 +191,11 @@ func processDefLine(env types.Environment, defDesc *types.List) jen.Code {
 }
 
 // labellableCode is not cloned (must generate a new one on each call)
-func processLabellable(_ types.Environment, itArgs types.Iterator, labellableCode *jen.Statement) types.Object {
-	if arg0, ok := itArgs.Next(); ok {
+func processLabellable(_ types.Environment, itArgs iter.Seq[types.Object], labellableCode *jen.Statement) types.Object {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	if arg0, ok := next(); ok {
 		labelId, ok := arg0.(types.Identifier)
 		if !ok {
 			return wrappedErrorComment

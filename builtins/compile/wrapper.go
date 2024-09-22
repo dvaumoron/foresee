@@ -76,24 +76,28 @@ func (w literalWrapper) Eval(types.Environment) types.Object {
 
 func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
 	if casted, ok := w.Renderer.(*jen.Statement); ok {
-		itArgs := args.Iter()
-		defer itArgs.Close()
+		next, stop := types.Pull(args.Iter())
+		defer stop()
 
 		var argsCode []jen.Code
-		if arg0, ok := itArgs.Next(); ok {
+		if arg0, ok := next(); ok {
 			casted2, _ := arg0.(*types.List)
 			// detect Field:value (could be a classic function/operator call)
 			if header, _ := casted2.LoadInt(0).(types.Identifier); header == names.ListId {
 				dict := jen.Dict{compileToCode(env, casted2.LoadInt(1)): compileToCode(env, casted2.LoadInt(2))}
-				types.ForEach(itArgs, func(elem types.Object) bool {
+				for {
+					elem, ok := next()
+					if !ok {
+						break
+					}
+
 					fieldDesc, _ := elem.(*types.List)
 					dict[compileToCode(env, fieldDesc.LoadInt(1))] = compileToCode(env, fieldDesc.LoadInt(2))
-					return true
-				})
+				}
 				argsCode = []jen.Code{dict}
 			} else {
 				argsCode = []jen.Code{compileToCode(env, arg0)}
-				argsCodeTemp := compileToCodeSlice(env, itArgs)
+				argsCodeTemp := compileToCodeSlice(env, types.Push(next))
 				argsCode = append(argsCode, argsCodeTemp...)
 			}
 		}

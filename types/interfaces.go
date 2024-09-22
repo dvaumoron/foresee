@@ -13,7 +13,10 @@
 
 package types
 
-import "io"
+import (
+	"io"
+	"iter"
+)
 
 type Loadable interface {
 	Object
@@ -51,18 +54,12 @@ type Sizable interface {
 	Size() int
 }
 
-type Iterator interface {
-	Iterable
-	Next() (Object, bool)
-	Close()
-}
-
 type Iterable interface {
 	Object
-	Iter() Iterator
+	Iter() iter.Seq[Object]
 }
 
 type Appliable interface {
 	Object
-	Apply(Environment, Iterable) Object
+	Apply(Environment, iter.Seq[Object]) Object
 }

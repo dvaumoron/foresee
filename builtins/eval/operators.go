@@ -14,22 +14,24 @@
 package eval
 
 import (
+	"iter"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
 )
 
-func addressOrBitwiseAndForm(env types.Environment, itArgs types.Iterator) types.Object {
+func addressOrBitwiseAndForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO improve adressing and dereferencing eval with boxing and unboxing behavior
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstForm, bitwiseAndFunc)
 }
 
-func andForm(env types.Environment, itArgs types.Iterator) types.Object {
+func andForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return boolOperatorForm(env, itArgs, true)
 }
 
-func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func assignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
-	values := types.NewList().AddAll(makeEvalIterator(itArgs, env))
+	values := types.NewList().AddAll(evalIterator(itArgs, env))
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		env.StoreStr(string(casted), values.LoadInt(0))
@@ -57,39 +59,39 @@ func assignForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func bitwiseAndAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, string(names.AmpersandId))
 }
 
-func bitwiseAndFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, bitwiseAndOperator)
 }
 
-func bitwiseAndNotAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndNotAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, string(names.AndNot))
 }
 
-func bitwiseAndNotFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseAndNotFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, bitwiseAndNotOperator)
 }
 
-func bitwiseOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseOrAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Pipe)
 }
 
-func bitwiseOrFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseOrFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, bitwiseOrOperator)
 }
 
-func bitwiseXOrAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseXOrAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Caret)
 }
 
-func bitwiseXOrFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func bitwiseXOrFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, bitwiseXOrOperator)
 }
 
-func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
+func callMethodForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -117,43 +119,43 @@ func callMethodForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return method.Apply(env, augmentedItArgs)
 }
 
-func decrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+func decrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceUnaryOperatorForm(env, itArgs, names.Minus)
 }
 
-func dereferenceOrMultiplyForm(env types.Environment, itArgs types.Iterator) types.Object {
+func dereferenceOrMultiplyForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return processUnaryOrBinaryMoreFunc(env, itArgs, evalFirstForm, productFunc)
 }
 
-func divideSetForm(env types.Environment, itArgs types.Iterator) types.Object {
+func divideSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Slash)
 }
 
-func extendSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+func extendSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO
 
 	return types.None
 }
 
-func equalFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func equalFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	return types.Boolean(ok && equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
-func greaterEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+func greaterEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return compareForm(env, itArgs, greaterEqualComparator)
 }
 
-func greaterForm(env types.Environment, itArgs types.Iterator) types.Object {
+func greaterForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return compareForm(env, itArgs, greaterThanComparator)
 }
 
-func incrementForm(env types.Environment, itArgs types.Iterator) types.Object {
+func incrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceUnaryOperatorForm(env, itArgs, names.Plus)
 }
 
-func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object {
+func indexOrSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	res, _ := itArgs.Next()
 	types.ForEach(itArgs, func(elem types.Object) bool {
 		loadable, ok := res.(types.Loadable)
@@ -169,69 +171,69 @@ func indexOrSliceForm(env types.Environment, itArgs types.Iterator) types.Object
 	return res
 }
 
-func leftShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func leftShiftAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.LShift)
 }
 
-func leftShiftFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func leftShiftFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, leftShiftOperator)
 }
 
-func lesserForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lesserForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return compareForm(env, itArgs, lessThanComparator)
 }
 
-func lesserEqualForm(env types.Environment, itArgs types.Iterator) types.Object {
+func lesserEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return compareForm(env, itArgs, lessEqualComparator)
 }
 
-func minusSetForm(env types.Environment, itArgs types.Iterator) types.Object {
+func minusSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Minus)
 }
 
-func notEqualFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func notEqualFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	return types.Boolean(ok && !equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
-func notFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func notFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg, _ := itArgs.Next()
 
 	return types.Boolean(!extractBoolean(arg.Eval(env)))
 }
 
-func orForm(env types.Environment, itArgs types.Iterator) types.Object {
+func orForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return boolOperatorForm(env, itArgs, false)
 }
 
-func productFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	return cumulNumber(makeEvalIterator(itArgs, env), productKind)
+func productFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	return cumulNumber(evalIterator(itArgs, env), productKind)
 }
 
-func productSetForm(env types.Environment, itArgs types.Iterator) types.Object {
+func productSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, string(names.StarId))
 }
 
-func receivingOrSendingForm(env types.Environment, itArgs types.Iterator) types.Object {
+func receivingOrSendingForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	// TODO channel wrapper type
 
 	return types.None
 }
 
-func remainderSetForm(env types.Environment, itArgs types.Iterator) types.Object {
+func remainderSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Percent)
 }
 
-func rightShiftAssignForm(env types.Environment, itArgs types.Iterator) types.Object {
+func rightShiftAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.RShift)
 }
 
-func rightShiftFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func rightShiftFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return intOperatorFunc(env, itArgs, rightShiftOperator)
 }
 
-func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
+func storeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	args := types.NewList().AddAll(itArgs)
 	lastIndex := args.Size() - 1
 	if lastIndex < 2 {
@@ -263,8 +265,8 @@ func storeForm(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.None
 }
 
-func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
-	args := types.NewList().AddAll(makeEvalIterator(itArgs, env))
+func sumFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	args := types.NewList().AddAll(evalIterator(itArgs, env))
 	if _, isString := args.LoadInt(0).(types.String); isString {
 		return concatStrings(args)
 	}
@@ -272,6 +274,6 @@ func sumFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	return cumulNumber(args, sumKind)
 }
 
-func sumSetForm(env types.Environment, itArgs types.Iterator) types.Object {
+func sumSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return inplaceOperatorForm(env, itArgs, names.Plus)
 }

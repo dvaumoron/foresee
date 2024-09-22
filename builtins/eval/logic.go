@@ -15,6 +15,7 @@ package eval
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/dvaumoron/foresee/types"
 )
@@ -57,21 +58,26 @@ var (
 	lessThanComparator     = comparator{compareInt: lessThan[types.Integer], compareFloat: lessThan[types.Float], compareString: lessThan[types.String]}
 )
 
-func compareForm(env types.Environment, itArgs types.Iterator, c comparator) types.Object {
-	arg0, res := itArgs.Next()
+func compareForm(env types.Environment, itArgs iter.Seq[types.Object], c comparator) types.Object {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, res := next()
 	if !res {
 		return types.Boolean(false)
 	}
 
 	res = false
 	previousValue := arg0.Eval(env)
-	types.ForEach(itArgs, func(currentArg types.Object) bool {
+	for currentArg := range types.Push(next) {
 		currentValue := currentArg.Eval(env)
 		// change the variable that will be returned in the caller
-		res = compare(previousValue, currentValue, c)
+		if res = compare(previousValue, currentValue, c); !res {
+			break
+		}
 		previousValue = currentValue
-		return res
-	})
+	}
+
 	return types.Boolean(res)
 }
 
@@ -102,23 +108,19 @@ func compare(value0 types.Object, value1 types.Object, c comparator) bool {
 	panic(errOrderableType)
 }
 
-func boolOperatorForm(env types.Environment, itArgs types.Iterator, defaultB bool) types.Object {
-	allBool := true
+func boolOperatorForm(env types.Environment, itArgs iter.Seq[types.Object], defaultB bool) types.Object {
 	res := types.Boolean(defaultB)
-	var temp types.Boolean
-	types.ForEach(itArgs, func(arg types.Object) bool {
-		temp, allBool = arg.Eval(env).(types.Boolean)
+	for arg := range itArgs {
+		temp, allBool := arg.Eval(env).(types.Boolean)
+		if !allBool {
+			panic(errBooleanType)
+		}
+
 		if temp != res {
 			res = temp
 
-			return false
+			break
 		}
-
-		return allBool
-	})
-
-	if !allBool {
-		panic(errBooleanType)
 	}
 
 	return res

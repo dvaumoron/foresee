@@ -15,6 +15,7 @@ package eval
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
@@ -32,27 +33,14 @@ var (
 	errUnknownField   = errors.New("field or method unknown")
 )
 
-type evalIterator struct {
-	types.NoneType
-	inner types.Iterator
-	env   types.Environment
-}
-
-func (e evalIterator) Iter() types.Iterator {
-	return e
-}
-
-func (e evalIterator) Next() (types.Object, bool) {
-	value, ok := e.inner.Next()
-	return value.Eval(e.env), ok
-}
-
-func (e evalIterator) Close() {
-	e.inner.Close()
-}
-
-func makeEvalIterator(it types.Iterator, env types.Environment) evalIterator {
-	return evalIterator{inner: it, env: env}
+func evalIterator(it iter.Seq[types.Object], env types.Environment) iter.Seq[types.Object] {
+	return func(yield func(types.Object) bool) {
+		for value := range it {
+			if !yield(value.Eval(env)) {
+				break
+			}
+		}
+	}
 }
 
 // handle "a" as a,  "(* a)" as a, "([] a b c)" as a[b][c] and "(get a b c)" as a.b.c

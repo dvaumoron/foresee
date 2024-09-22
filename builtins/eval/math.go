@@ -15,6 +15,7 @@ package eval
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/dvaumoron/foresee/types"
 )
@@ -96,7 +97,7 @@ func cumulNumber(args types.Iterable, carac cumulKind) types.Object {
 	return cumulI
 }
 
-func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func minusFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	arg1, ok := itArgs.Next()
 	if !ok {
@@ -132,7 +133,7 @@ func minusFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	panic(errNumericType)
 }
 
-func divideFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func divideFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
@@ -160,7 +161,7 @@ func divideFloat(a types.Float, b types.Float) types.Object {
 	return a / b
 }
 
-func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
+func remainderFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	arg0, _ := itArgs.Next()
 	a, allInt := arg0.Eval(env).(types.Integer)
 	if !allInt {
@@ -184,7 +185,7 @@ func remainderFunc(env types.Environment, itArgs types.Iterator) types.Object {
 	return types.Integer(res)
 }
 
-func intOperatorFunc(env types.Environment, itArgs types.Iterator, intOperator func(int64, int64) int64) types.Object {
+func intOperatorFunc(env types.Environment, itArgs iter.Seq[types.Object], intOperator func(int64, int64) int64) types.Object {
 	arg0, _ := itArgs.Next()
 	a, allInt := arg0.Eval(env).(types.Integer)
 	if !allInt {

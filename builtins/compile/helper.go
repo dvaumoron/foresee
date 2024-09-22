@@ -14,6 +14,7 @@
 package compile
 
 import (
+	"iter"
 	"math"
 
 	"github.com/dave/jennifer/jen"
@@ -21,12 +22,11 @@ import (
 	"github.com/dvaumoron/foresee/types"
 )
 
-func compileToCodeSlice(env types.Environment, iterable types.Iterable) []jen.Code {
+func compileToCodeSlice(env types.Environment, it iter.Seq[types.Object]) []jen.Code {
 	var codes []jen.Code
-	types.ForEach(iterable, func(elem types.Object) bool {
+	for elem := range it {
 		codes = append(codes, compileToCode(env, elem))
-		return true
-	})
+	}
 	return codes
 }
 
@@ -223,19 +223,21 @@ func extractGenType(env types.Environment, arg0 types.Object, arg1 types.Object)
 
 // skip first elem (should be ListId)
 func extractTypes(env types.Environment, typeIterable types.Iterable) ([]jen.Code, bool) {
-	itType := typeIterable.Iter() // no need to close (done in ForEach)
-	itType.Next()                 // skip ListId
+	next, stop := types.Pull(typeIterable.Iter())
+	defer stop()
+	next() // skip ListId
 
-	noError := false
+	hasError := true
 	var typeCodes []jen.Code
-	types.ForEach(itType, func(elem types.Object) bool {
+	for elem := range types.Push(next) {
 		typeCode := extractType(env, elem)
-		if noError = typeCode != nil; noError {
-			typeCodes = append(typeCodes, typeCode)
+		if hasError = typeCode == nil; hasError {
+			break
 		}
-		return noError
-	})
-	return typeCodes, noError
+		typeCodes = append(typeCodes, typeCode)
+	}
+
+	return typeCodes, !hasError
 }
 
 // handle "a" as a,  "(* a)" as *a and ([] a b c) as a[b][c]
@@ -252,22 +254,21 @@ func extractAssignTarget(env types.Environment, object types.Object) *jen.Statem
 func extractAssignTargetFromList(env types.Environment, list *types.List) *jen.Statement {
 	switch op, _ := list.LoadInt(0).(types.Identifier); op {
 	case names.LoadId:
-		it := list.Iter()
-		defer it.Close()
+		next, stop := types.Pull(list.Iter())
+		defer stop()
 
-		it.Next() // skip LoadId
-		id, _ := it.Next()
-		index, ok := it.Next()
+		next() // skip LoadId
+		id, _ := next()
+		index, ok := next()
 		if !ok {
 			return nil
 		}
 
 		castedId, _ := id.(types.Identifier)
 		code := jen.Id(string(castedId)).Index(compileToCode(env, index)) // can not be slicing
-		types.ForEach(it, func(elem types.Object) bool {
+		for elem := range types.Push(next) {
 			code.Index(compileToCode(env, elem)) // can not be slicing
-			return true
-		})
+		}
 		return code
 	case names.StarId:
 		if list.Size() > 1 {

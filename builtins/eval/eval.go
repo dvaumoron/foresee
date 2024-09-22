@@ -14,6 +14,8 @@
 package eval
 
 import (
+	"iter"
+
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/parser"
 	"github.com/dvaumoron/foresee/types"
@@ -129,12 +131,14 @@ func initBuitins() types.BaseEnvironment {
 	return base
 }
 
-func evalFirstForm(env types.Environment, itArgs types.Iterator) types.Object {
-	args0, _ := itArgs.Next()
+func evalFirstForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
+	for arg := range itArgs {
+		return arg.Eval(env)
+	}
 
-	return args0.Eval(env)
+	return types.None
 }
 
-func noOp(env types.Environment, itArgs types.Iterator) types.Object {
+func noOp(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	return types.None
 }

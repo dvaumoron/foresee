@@ -28,23 +28,10 @@ func (l *List) Add(value Object) *List {
 	return l
 }
 
-// If the action func return false that break the loop.
-func ForEach(it Iterable, action func(Object) bool) {
-	it2 := it.Iter()
-	defer it2.Close()
-	var value Object
-	for ok := true; ok; {
-		if value, ok = it2.Next(); ok {
-			ok = action(value)
-		}
-	}
-}
-
-func (l *List) AddAll(it Iterable) *List {
-	ForEach(it, func(value Object) bool {
+func (l *List) AddAll(it iter.Seq[Object]) *List {
+	for value := range it {
 		l.Add(value)
-		return true
-	})
+	}
 	return l
 }
 
@@ -114,14 +101,12 @@ func (l *List) Size() int {
 }
 
 // No panic with nil receiver
-func (l *List) Iter() Iterator {
+func (l *List) Iter() iter.Seq[Object] {
 	if l == nil {
-		return &pullIteratorWrapper{}
+		return slices.Values(([]Object)(nil))
 	}
 
-	next, stop := iter.Pull(slices.Values(l.inner))
-
-	return &pullIteratorWrapper{next: next, close: stop}
+	return slices.Values(l.inner)
 }
 
 func (l *List) Render(w io.Writer) error {
@@ -134,15 +119,15 @@ func (l *List) Render(w io.Writer) error {
 }
 
 func (l *List) Eval(env Environment) Object {
-	it := l.Iter()
-	defer it.Close()
+	next, stop := types.Pull(l.Iter())
+	defer stop()
 
-	firstElem, _ := it.Next() // None is not an Appliable
+	firstElem, _ := next() // None is not an Appliable
 	appliable, ok := firstElem.Eval(env).(Appliable)
 	if !ok {
 		return None
 	}
-	return appliable.Apply(env, it)
+	return appliable.Apply(env, Push(next))
 }
 
 func NewList(objects ...Object) *List {

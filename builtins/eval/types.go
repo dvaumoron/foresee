@@ -15,6 +15,7 @@ package eval
 
 import (
 	"errors"
+	"iter"
 
 	"github.com/dvaumoron/foresee/types"
 )
@@ -53,9 +54,8 @@ type dynamicObject struct {
 }
 
 func curryMethod(d dynamicObject, method types.Appliable) types.NativeAppliable {
-	return types.MakeNativeAppliable(func(env types.Environment, itArgs types.Iterator) types.Object {
+	return types.MakeNativeAppliable(func(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 		augmentedItArgs := types.NewList(d).AddAll(itArgs).Iter()
-		defer augmentedItArgs.Close()
 
 		return method.Apply(env, augmentedItArgs)
 	})
