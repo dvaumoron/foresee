@@ -145,3 +145,27 @@ func (n NativeAppliable) Apply(env Environment, it Iterable) Object {
 func MakeNativeAppliable(f NativeFunc) NativeAppliable {
 	return NativeAppliable{inner: f}
 }
+
+type pullIteratorWrapper struct {
+	NoneType
+	next  func() (Object, bool)
+	close func()
+}
+
+func (it pullIteratorWrapper) Iter() Iterator {
+	return it
+}
+
+func (it pullIteratorWrapper) Next() (Object, bool) {
+	if it.next == nil {
+		return None, false
+	}
+
+	return it.next()
+}
+
+func (it pullIteratorWrapper) Close() {
+	if it.close != nil {
+		it.close()
+	}
+}

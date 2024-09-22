@@ -13,7 +13,11 @@
 
 package types
 
-import "io"
+import (
+	"io"
+	"iter"
+	"slices"
+)
 
 type List struct {
 	inner []Object
@@ -109,37 +113,15 @@ func (l *List) Size() int {
 	return len(l.inner)
 }
 
-type listIterator struct {
-	NoneType
-	list    *List
-	current int
-}
-
-func (it *listIterator) Iter() Iterator {
-	return it
-}
-
-func (it *listIterator) Next() (Object, bool) {
-	if it.list == nil {
-		return None, false
-	}
-
-	inner := it.list.inner
-	current := it.current
-	if current >= len(inner) {
-		return None, false
-	}
-
-	it.current++
-	return inner[current], true
-}
-
-func (*listIterator) Close() {
-}
-
 // No panic with nil receiver
 func (l *List) Iter() Iterator {
-	return &listIterator{list: l}
+	if l == nil {
+		return pullIteratorWrapper{}
+	}
+
+	next, stop := iter.Pull(slices.Values(l.inner))
+
+	return pullIteratorWrapper{next: next, close: stop}
 }
 
 func (l *List) Render(w io.Writer) error {

@@ -13,7 +13,9 @@
 
 package types
 
-import "sync"
+import (
+	"iter"
+)
 
 // Accept only Identifier key when used as Storable.
 type BaseEnvironment struct {
@@ -71,47 +73,18 @@ func (b BaseEnvironment) Size() int {
 	return len(b.objects)
 }
 
-func (b BaseEnvironment) Iter() Iterator {
-	it := &chanIterator{channel: make(chan Object), done: make(chan NoneType)}
-	go it.sendMapValue(b.objects)
-	return it
-}
-
-type chanIterator struct {
-	NoneType
-	channel chan Object
-	done    chan NoneType
-	once    sync.Once
-}
-
-func (it *chanIterator) Iter() Iterator {
-	return it
-}
-
-func (it *chanIterator) Next() (Object, bool) {
-	value, ok := <-it.channel
-	if !ok {
-		return None, false
-	}
-	return value, true
-}
-
-func (it *chanIterator) Close() {
-	it.once.Do(func() {
-		close(it.done)
-	})
-}
-
-func (it *chanIterator) sendMapValue(objects map[string]Object) {
-ForLoop:
-	for key, value := range objects {
-		select {
-		case it.channel <- NewList(String(key), value):
-		case <-it.done:
-			break ForLoop
+func (b BaseEnvironment) pushIter(yield func(Object) bool) {
+	for key, value := range b.objects {
+		if !yield(NewList(String(key), value)) {
+			break
 		}
 	}
-	close(it.channel)
+}
+
+func (b BaseEnvironment) Iter() Iterator {
+	next, stop := iter.Pull(b.pushIter)
+
+	return pullIteratorWrapper{next: next, close: stop}
 }
 
 func MakeBaseEnvironment() BaseEnvironment {
