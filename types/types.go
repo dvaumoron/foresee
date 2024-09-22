@@ -16,6 +16,7 @@ package types
 import (
 	"io"
 	"strconv"
+	"sync"
 )
 
 type NativeFunc = func(Environment, Iterator) Object
@@ -150,22 +151,29 @@ type pullIteratorWrapper struct {
 	NoneType
 	next  func() (Object, bool)
 	close func()
+	mutex sync.Mutex
 }
 
-func (it pullIteratorWrapper) Iter() Iterator {
+func (it *pullIteratorWrapper) Iter() Iterator {
 	return it
 }
 
-func (it pullIteratorWrapper) Next() (Object, bool) {
+func (it *pullIteratorWrapper) Next() (Object, bool) {
 	if it.next == nil {
 		return None, false
 	}
 
+	it.mutex.Lock()
+	defer it.mutex.Unlock()
+
 	return it.next()
 }
 
-func (it pullIteratorWrapper) Close() {
+func (it *pullIteratorWrapper) Close() {
 	if it.close != nil {
+		it.mutex.Lock()
+		defer it.mutex.Unlock()
+
 		it.close()
 	}
 }

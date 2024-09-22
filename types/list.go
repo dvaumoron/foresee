@@ -116,12 +116,12 @@ func (l *List) Size() int {
 // No panic with nil receiver
 func (l *List) Iter() Iterator {
 	if l == nil {
-		return pullIteratorWrapper{}
+		return &pullIteratorWrapper{}
 	}
 
 	next, stop := iter.Pull(slices.Values(l.inner))
 
-	return pullIteratorWrapper{next: next, close: stop}
+	return &pullIteratorWrapper{next: next, close: stop}
 }
 
 func (l *List) Render(w io.Writer) error {

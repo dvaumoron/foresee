@@ -84,7 +84,7 @@ func (b BaseEnvironment) pushIter(yield func(Object) bool) {
 func (b BaseEnvironment) Iter() Iterator {
 	next, stop := iter.Pull(b.pushIter)
 
-	return pullIteratorWrapper{next: next, close: stop}
+	return &pullIteratorWrapper{next: next, close: stop}
 }
 
 func MakeBaseEnvironment() BaseEnvironment {
