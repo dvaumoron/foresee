@@ -23,21 +23,24 @@ import (
 
 func extractSliceIndexes(env types.Environment, object types.Object) []jen.Code {
 	if casted, ok := object.(*types.List); ok {
-		itCasted := casted.Iter()
-		defer itCasted.Close()
+		next, stop := types.Pull(casted.Iter())
+		defer stop()
 
-		arg0, _ := itCasted.Next()
+		arg0, _ := next()
 		// detect slice (could be a classic function/operator call)
 		if header, _ := arg0.(types.Identifier); header == names.ListId {
-			return compileToCodeSlice(env, itCasted)
+			return compileToCodeSlice(env, types.Push(next))
 		}
 	}
 	return []jen.Code{compileToCode(env, object)}
 }
 
 func processAssign(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, _ := itArgs.Next()
-	values := compileToCodeSlice(env, itArgs)
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	values := compileToCodeSlice(env, types.Push(next))
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		return wrapper{Renderer: jen.Id(string(casted)).Op(op).Add(values[0])}
@@ -47,18 +50,20 @@ func processAssign(env types.Environment, itArgs iter.Seq[types.Object], op stri
 		}
 
 		var ids []jen.Code
-		types.ForEach(casted, func(elem types.Object) bool {
+		for elem := range casted.Iter() {
 			ids = append(ids, extractAssignTarget(env, elem))
-			return true
-		})
+		}
 		return wrapper{Renderer: jen.List(ids...).Op(op).List(values...)}
 	}
 	return wrappedErrorComment
 }
 
 func processAugmentedAssign(env types.Environment, itArgs iter.Seq[types.Object], opAssign string) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	targetCode := extractAssignTarget(env, arg0)
 	if !ok || targetCode == nil {
 		return wrappedErrorComment
@@ -67,38 +72,46 @@ func processAugmentedAssign(env types.Environment, itArgs iter.Seq[types.Object]
 }
 
 func processAugmentedAssignMore(env types.Environment, itArgs iter.Seq[types.Object], opAssign string, op string) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	targetCode := extractAssignTarget(env, arg0)
 	if !ok || targetCode == nil {
 		return wrappedErrorComment
 	}
 
 	targetCode.Op(opAssign).Add(compileToCode(env, arg1))
-	types.ForEach(itArgs, func(elem types.Object) bool {
+	for elem := range types.Push(next) {
 		targetCode.Op(op).Add(compileToCode(env, elem))
-		return true
-	})
+	}
 	return wrapper{Renderer: targetCode}
 }
 
 func processBinaryMoreOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
 	binaryCode := compileToCode(env, arg0).Op(op).Add(compileToCode(env, arg1))
-	for _, code := range compileToCodeSlice(env, itArgs) {
+	for _, code := range compileToCodeSlice(env, types.Push(next)) {
 		binaryCode.Op(op).Add(code)
 	}
 	return wrapper{Renderer: binaryCode}
 }
 
 func processBinaryOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
@@ -106,15 +119,18 @@ func processBinaryOperator(env types.Environment, itArgs iter.Seq[types.Object],
 }
 
 func processComparison(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
 	argCode := jen.Code(compileToCode(env, arg1))
 	binaryCode := compileToCode(env, arg0).Op(op).Add(argCode)
-	for _, currentCode := range compileToCodeSlice(env, itArgs) {
+	for _, currentCode := range compileToCodeSlice(env, types.Push(next)) {
 		binaryCode.Op(names.And).Add(argCode).Op(op).Add(currentCode)
 		argCode = currentCode
 	}
@@ -122,20 +138,22 @@ func processComparison(env types.Environment, itArgs iter.Seq[types.Object], op 
 }
 
 func processUnaryPostOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, ok := itArgs.Next()
-	if !ok {
-		return wrappedErrorComment
+	for arg0 := range itArgs {
+		return wrapper{Renderer: compileToCode(env, arg0).Op(op)}
 	}
-	return wrapper{Renderer: compileToCode(env, arg0).Op(op)}
+	return wrappedErrorComment
 }
 
 func processUnaryOrBinaryMoreOperator(env types.Environment, itArgs iter.Seq[types.Object], op string) types.Object {
-	arg0, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
-	valueCodesTemp := compileToCodeSlice(env, itArgs)
+	valueCodesTemp := compileToCodeSlice(env, types.Push(next))
 	if len(valueCodesTemp) == 0 {
 		targetCode := Renderer(extractType(env, arg0))
 		if targetCode == (*jen.Statement)(nil) {

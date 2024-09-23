@@ -70,14 +70,17 @@ func bitwiseXOrForm(env types.Environment, itArgs iter.Seq[types.Object]) types.
 }
 
 func callMethodForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, _ := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, _ := next()
 	methodId, ok := arg1.(types.Identifier)
 	if !ok {
 		return wrappedErrorComment
 	}
 
-	argsCode := compileToCodeSlice(env, itArgs)
+	argsCode := compileToCodeSlice(env, types.Push(next))
 	// returned value could be callable
 	return callableWrapper{Renderer: compileToCode(env, arg0).Dot(string(methodId)).Call(argsCode...)}
 }
@@ -107,11 +110,10 @@ func equalForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Objec
 }
 
 func extendSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, ok := itArgs.Next()
-	if !ok {
-		return wrappedErrorComment
+	for arg0 := range itArgs {
+		return wrapper{Renderer: compileToCode(env, arg0).Op(string(names.EllipsisId))}
 	}
-	return wrapper{Renderer: compileToCode(env, arg0).Op(string(names.EllipsisId))}
+	return wrappedErrorComment
 }
 
 func greaterForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
@@ -127,19 +129,21 @@ func incrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.O
 }
 
 func indexOrSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
 	slice0 := extractSliceIndexes(env, arg1)
 	slicingCode := compileToCode(env, arg0).Index(slice0...)
-	types.ForEach(itArgs, func(elem types.Object) bool {
+	for elem := range types.Push(next) {
 		sliceN := extractSliceIndexes(env, elem)
 		slicingCode.Index(sliceN...)
-		return true
-	})
+	}
 	// returned value could be callable
 	return callableWrapper{Renderer: slicingCode}
 }
@@ -173,11 +177,10 @@ func multiplyAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) ty
 }
 
 func notForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, ok := itArgs.Next()
-	if !ok {
-		return wrappedErrorComment
+	for arg0 := range itArgs {
+		return wrapper{Renderer: jen.Op(string(names.NotId)).Add(compileToCode(env, arg0))}
 	}
-	return wrapper{Renderer: jen.Op(string(names.NotId)).Add(compileToCode(env, arg0))}
+	return wrappedErrorComment
 }
 
 func notEqualForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
@@ -189,12 +192,15 @@ func orForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 }
 
 func receivingOrSendingForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
-	arg1, ok := itArgs.Next()
+	arg1, ok := next()
 	if ok {
 		return wrapper{Renderer: compileToCode(env, arg0).Op(names.Arrow).Add(compileToCode(env, arg1))}
 	}
@@ -216,18 +222,20 @@ func rightShiftAssignForm(env types.Environment, itArgs iter.Seq[types.Object]) 
 }
 
 func storeForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		return wrappedErrorComment
 	}
 
 	slice0 := extractSliceIndexes(env, arg1)
 	var slices [][]jen.Code
-	types.ForEach(itArgs, func(elem types.Object) bool {
+	for elem := range types.Push(next) {
 		slices = append(slices, extractSliceIndexes(env, elem))
-		return true
-	})
+	}
 
 	lastIndex := len(slices) - 1
 	slicingCode := compileToCode(env, arg0).Index(slice0...)

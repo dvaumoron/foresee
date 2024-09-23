@@ -30,8 +30,11 @@ func andForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object 
 }
 
 func assignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	values := types.NewList().AddAll(evalIterator(itArgs, env))
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	values := types.NewList().AddAll(evalIterator(types.Push(next), env))
 	switch casted := arg0.(type) {
 	case types.Identifier:
 		env.StoreStr(string(casted), values.LoadInt(0))
@@ -43,7 +46,7 @@ func assignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Obje
 		}
 
 		index := 0
-		types.ForEach(casted, func(elem types.Object) bool {
+		for elem := range casted.Iter() {
 			assignFunc := buildAssignFunc(env, elem)
 			if assignFunc == nil {
 				panic(errAssignableType)
@@ -52,8 +55,7 @@ func assignForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Obje
 			assignFunc(values.LoadInt(index))
 			index++
 
-			return true
-		})
+		}
 	}
 
 	return types.None
@@ -92,8 +94,11 @@ func bitwiseXOrFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.
 }
 
 func callMethodForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		panic(errPairSize)
 	}
@@ -113,9 +118,7 @@ func callMethodForm(env types.Environment, itArgs iter.Seq[types.Object]) types.
 		panic(errUnknownField)
 	}
 
-	augmentedItArgs := types.NewList(d).AddAll(itArgs).Iter()
-	defer augmentedItArgs.Close()
-
+	augmentedItArgs := types.NewList(d).AddAll(types.Push(next)).Iter()
 	return method.Apply(env, augmentedItArgs)
 }
 
@@ -138,8 +141,11 @@ func extendSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types
 }
 
 func equalFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	return types.Boolean(ok && equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
@@ -156,17 +162,18 @@ func incrementForm(env types.Environment, itArgs iter.Seq[types.Object]) types.O
 }
 
 func indexOrSliceForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	res, _ := itArgs.Next()
-	types.ForEach(itArgs, func(elem types.Object) bool {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	res, _ := next()
+	for elem := range types.Push(next) {
 		loadable, ok := res.(types.Loadable)
 		if !ok {
 			panic(errIndexableType)
 		}
 
 		res = loadable.Load(elem.Eval(env))
-
-		return true
-	})
+	}
 
 	return res
 }
@@ -192,15 +199,19 @@ func minusSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Ob
 }
 
 func notEqualFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	return types.Boolean(ok && !equals(arg0.Eval(env), arg1.Eval(env)))
 }
 
 func notFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg, _ := itArgs.Next()
-
-	return types.Boolean(!extractBoolean(arg.Eval(env)))
+	for arg := range itArgs {
+		return types.Boolean(!extractBoolean(arg.Eval(env)))
+	}
+	return types.Boolean(true)
 }
 
 func orForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
@@ -271,7 +282,7 @@ func sumFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object 
 		return concatStrings(args)
 	}
 
-	return cumulNumber(args, sumKind)
+	return cumulNumber(args.Iter(), sumKind)
 }
 
 func sumSetForm(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {

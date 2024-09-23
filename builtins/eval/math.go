@@ -69,11 +69,11 @@ var (
 	productKind = cumulKind{init: 1, cumulInt: multNumberOperator[types.Integer], cumulFloat: multNumberOperator[types.Float]}
 )
 
-func cumulNumber(args types.Iterable, carac cumulKind) types.Object {
+func cumulNumber(itArgs iter.Seq[types.Object], carac cumulKind) types.Object {
 	cumulI := carac.init
 	cumulF := types.Float(cumulI)
-	allNumericType, hasFloat := true, false
-	types.ForEach(args, func(arg types.Object) bool {
+	hasFloat := false
+	for arg := range itArgs {
 		switch casted := arg.(type) {
 		case types.Integer:
 			cumulI = carac.cumulInt(cumulI, casted)
@@ -81,25 +81,22 @@ func cumulNumber(args types.Iterable, carac cumulKind) types.Object {
 			hasFloat = true
 			cumulF = carac.cumulFloat(cumulF, casted)
 		default:
-			allNumericType = false
+			panic(errNumericType)
 		}
-		return allNumericType
-	})
-
-	if !allNumericType {
-		panic(errNumericType)
 	}
 
 	if hasFloat {
 		return carac.cumulFloat(types.Float(cumulI), cumulF)
 	}
-
 	return cumulI
 }
 
 func minusFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	arg1, ok := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	arg1, ok := next()
 	if !ok {
 		// unary version
 		switch casted := arg0.Eval(env).(type) {
@@ -111,8 +108,7 @@ func minusFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Objec
 		panic(errNumericType)
 	}
 
-	itArgs = types.NewList(arg1).AddAll(itArgs).Iter()
-	defer itArgs.Close()
+	itArgs = types.NewList(arg1).AddAll(types.Push(next)).Iter()
 
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
@@ -134,12 +130,15 @@ func minusFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Objec
 }
 
 func divideFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
 	switch casted := arg0.Eval(env).(type) {
 	case types.Integer:
-		return divideObject(types.Float(casted), productFunc(env, itArgs))
+		return divideObject(types.Float(casted), productFunc(env, types.Push(next)))
 	case types.Float:
-		return divideObject(casted, productFunc(env, itArgs))
+		return divideObject(casted, productFunc(env, types.Push(next)))
 	}
 	panic(errNumericType)
 }
@@ -162,46 +161,47 @@ func divideFloat(a types.Float, b types.Float) types.Object {
 }
 
 func remainderFunc(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
-	arg0, _ := itArgs.Next()
-	a, allInt := arg0.Eval(env).(types.Integer)
-	if !allInt {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	a, isInt := arg0.Eval(env).(types.Integer)
+	if !isInt {
 		panic(errIntegerType)
 	}
 
 	res := int64(a)
-	var b types.Integer
-	types.ForEach(itArgs, func(arg types.Object) bool {
-		b, allInt = arg.Eval(env).(types.Integer)
-		if allInt = allInt && b != 0; allInt {
-			res %= int64(b)
+	for arg := range types.Push(next) {
+		b, _ := arg.Eval(env).(types.Integer)
+		if b == 0 {
+			panic(errIntegerType)
 		}
-		return allInt
-	})
 
-	if !allInt {
-		panic(errIntegerType)
+		res %= int64(b)
 	}
 
 	return types.Integer(res)
 }
 
 func intOperatorFunc(env types.Environment, itArgs iter.Seq[types.Object], intOperator func(int64, int64) int64) types.Object {
-	arg0, _ := itArgs.Next()
-	a, allInt := arg0.Eval(env).(types.Integer)
-	if !allInt {
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg0, _ := next()
+	a, isInt := arg0.Eval(env).(types.Integer)
+	if !isInt {
 		panic(errIntegerType)
 	}
 
 	res := int64(a)
 	var b types.Integer
-	types.ForEach(itArgs, func(arg types.Object) bool {
-		b, allInt = arg.Eval(env).(types.Integer)
-		res = intOperator(res, int64(b))
-		return allInt
-	})
+	for arg := range types.Push(next) {
+		b, isInt = arg.Eval(env).(types.Integer)
+		if !isInt {
+			panic(errIntegerType)
+		}
 
-	if !allInt {
-		panic(errIntegerType)
+		res = intOperator(res, int64(b))
 	}
 
 	return types.Integer(res)

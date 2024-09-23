@@ -119,7 +119,7 @@ func (l *List) Render(w io.Writer) error {
 }
 
 func (l *List) Eval(env Environment) Object {
-	next, stop := types.Pull(l.Iter())
+	next, stop := Pull(l.Iter())
 	defer stop()
 
 	firstElem, _ := next() // None is not an Appliable

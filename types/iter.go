@@ -34,11 +34,7 @@ func Push(next func() (Object, bool)) iter.Seq[Object] {
 	return func(yield func(Object) bool) {
 		for {
 			value, ok := next()
-			if !ok {
-				break
-			}
-
-			if !yield(value) {
+			if !ok || !yield(value) {
 				break
 			}
 		}

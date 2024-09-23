@@ -22,44 +22,43 @@ import (
 )
 
 func concatStrings(args types.Iterable) types.Object {
-	allString := true
-	var temp types.String
 	var builder strings.Builder
-	types.ForEach(args, func(arg types.Object) bool {
-		temp, allString = arg.(types.String)
+	for arg := range args.Iter() {
+		temp, isString := arg.(types.String)
+		if !isString {
+			panic(errStringType)
+		}
 		builder.WriteString(string(temp))
-
-		return allString
-	})
-
-	if !allString {
-		panic(errStringType)
 	}
 
 	return types.String(builder.String())
 }
 
 func inplaceOperatorForm(env types.Environment, itArgs iter.Seq[types.Object], opStr string) types.Object {
-	arg, _ := itArgs.Next()
-	opCall := types.NewList(types.Identifier(opStr), arg).AddAll(itArgs)
+	next, stop := types.Pull(itArgs)
+	defer stop()
+
+	arg, _ := next()
+	opCall := types.NewList(types.Identifier(opStr), arg).AddAll(types.Push(next))
 	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
 }
 
 func inplaceUnaryOperatorForm(env types.Environment, itArgs iter.Seq[types.Object], opStr string) types.Object {
-	arg, _ := itArgs.Next()
-	opCall := types.NewList(types.Identifier(opStr), arg).Add(types.Integer(1))
-	return types.NewList(types.Identifier(names.Assign), arg, opCall).Eval(env)
+	var arg0 types.Object = types.None
+	for arg := range itArgs {
+		arg0 = arg
+		break
+	}
+	opCall := types.NewList(types.Identifier(opStr), arg0).Add(types.Integer(1))
+	return types.NewList(types.Identifier(names.Assign), arg0, opCall).Eval(env)
 }
 
 func processUnaryOrBinaryMoreFunc(env types.Environment, itArgs iter.Seq[types.Object], unaryFunc types.NativeFunc, binaryMoreFunc types.NativeFunc) types.Object {
 	args := types.NewList().AddAll(itArgs)
 
 	itArgs = args.Iter()
-	defer itArgs.Close()
-
 	if args.Size() == 1 {
 		return unaryFunc(env, itArgs)
 	}
-
 	return binaryMoreFunc(env, itArgs)
 }
