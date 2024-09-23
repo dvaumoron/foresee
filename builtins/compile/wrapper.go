@@ -14,6 +14,8 @@
 package compile
 
 import (
+	"iter"
+
 	"github.com/dave/jennifer/jen"
 	"github.com/dvaumoron/foresee/builtins/names"
 	"github.com/dvaumoron/foresee/types"
@@ -54,9 +56,9 @@ func (w callableWrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
-func (w callableWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
+func (w callableWrapper) Apply(env types.Environment, itAargs iter.Seq[types.Object]) types.Object {
 	if casted, ok := w.Renderer.(*jen.Statement); ok {
-		argsCode := compileToCodeSlice(env, args)
+		argsCode := compileToCodeSlice(env, itAargs)
 		// still appliable ("f(a)(b)" is possible)
 		return callableWrapper{Renderer: casted.Clone().Call(argsCode...)}
 	}
@@ -74,9 +76,9 @@ func (w literalWrapper) Eval(types.Environment) types.Object {
 	return w
 }
 
-func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.Object {
+func (w literalWrapper) Apply(env types.Environment, itArgs iter.Seq[types.Object]) types.Object {
 	if casted, ok := w.Renderer.(*jen.Statement); ok {
-		next, stop := types.Pull(args.Iter())
+		next, stop := types.Pull(itArgs)
 		defer stop()
 
 		var argsCode []jen.Code
@@ -85,12 +87,7 @@ func (w literalWrapper) Apply(env types.Environment, args types.Iterable) types.
 			// detect Field:value (could be a classic function/operator call)
 			if header, _ := casted2.LoadInt(0).(types.Identifier); header == names.ListId {
 				dict := jen.Dict{compileToCode(env, casted2.LoadInt(1)): compileToCode(env, casted2.LoadInt(2))}
-				for {
-					elem, ok := next()
-					if !ok {
-						break
-					}
-
+				for elem := range types.Push(next){
 					fieldDesc, _ := elem.(*types.List)
 					dict[compileToCode(env, fieldDesc.LoadInt(1))] = compileToCode(env, fieldDesc.LoadInt(2))
 				}
